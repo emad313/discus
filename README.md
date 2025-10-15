@@ -38,9 +38,14 @@ A Google Meet alternative built with Vue 3, Node.js, and Mediasoup. Supports 100
 
 ## 📋 Prerequisites
 
-- Node.js 18+ 
-- Docker & Docker Compose
-- Git
+- Node.js 18+ ✅
+- Python 3.x ✅
+- **C++ Build Tools** ⚠️ **REQUIRED for video calls**
+  - Windows: Visual Studio Build Tools
+  - Linux: build-essential
+  - Mac: Xcode Command Line Tools
+- Git ✅
+- Docker & Docker Compose (optional)
 
 ## 🚀 Quick Start
 
@@ -51,7 +56,33 @@ git clone https://github.com/emad313/discus.git
 cd discus
 ```
 
-### 2. Setup Frontend
+### 2. Install Native Dependencies (IMPORTANT!)
+
+**For video calls to work, you MUST install C++ Build Tools:**
+
+#### Windows:
+```bash
+# Run automated installer
+./scripts/install-mediasoup.bat
+
+# Or manually download:
+# https://aka.ms/vs/17/release/vs_BuildTools.exe
+# Select "Desktop development with C++"
+```
+
+#### Linux:
+```bash
+sudo apt-get install build-essential python3
+```
+
+#### Mac:
+```bash
+xcode-select --install
+```
+
+**See [docs/INSTALL_MEDIASOUP.md](docs/INSTALL_MEDIASOUP.md) for detailed instructions**
+
+### 3. Setup Frontend
 
 ```bash
 cd frontend
@@ -60,16 +91,20 @@ cp .env.example .env
 npm run dev
 ```
 
-### 3. Setup Backend
+### 4. Setup Backend
 
 ```bash
 cd backend
 npm install
 cp .env.example .env
+
+# Rebuild Mediasoup with native dependencies
+npm rebuild mediasoup
+
 npm run dev
 ```
 
-### 4. Using Docker (Recommended)
+### 5. Using Docker (Alternative)
 
 ```bash
 docker-compose up -d
