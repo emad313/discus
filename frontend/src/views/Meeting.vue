@@ -1,58 +1,129 @@
 <template>
-  <div class="h-screen flex flex-col bg-gray-900">
-    <!-- Header -->
-    <header class="bg-gray-800 px-4 py-3 flex items-center justify-between">
+  <div class="h-screen flex flex-col bg-[#202124] relative">
+    <!-- Top Bar -->
+    <header class="absolute top-0 left-0 right-0 z-20 px-6 py-4 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent">
       <div class="flex items-center gap-4">
-        <h1 class="text-white font-semibold text-lg">{{ appName }}</h1>
-        <span class="text-gray-400 text-sm">{{ meetingId }}</span>
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm">
+            <span class="text-white text-lg font-bold">D</span>
+          </div>
+          <div>
+            <div class="text-white font-medium text-base">{{ meetingId }}</div>
+            <div class="text-gray-300 text-xs flex items-center gap-2">
+              <span class="flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                {{ currentTime }}
+              </span>
+              <span>|</span>
+              <span>{{ totalParticipants }} {{ totalParticipants === 1 ? 'participant' : 'participants' }}</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="text-white text-sm">
-        👥 {{ totalParticipants }} participants
+      <div class="flex items-center gap-3">
+        <!-- Meeting Info Button -->
+        <button
+          @click="showMeetingInfo = !showMeetingInfo"
+          class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all text-white text-sm font-medium"
+          title="Meeting details"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
       </div>
     </header>
 
-    <!-- Error Message -->
-    <div v-if="errorMessage" class="bg-red-600 text-white px-4 py-3 text-sm">
-      {{ errorMessage }}
-      <button @click="errorMessage = null" class="ml-4 underline">Dismiss</button>
-    </div>
+    <!-- Error Message Toast -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="transform translate-y-2 opacity-0"
+      enter-to-class="transform translate-y-0 opacity-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="transform translate-y-0 opacity-100"
+      leave-to-class="transform translate-y-2 opacity-0"
+    >
+      <div v-if="errorMessage" class="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl flex items-center gap-3 max-w-md">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span class="text-sm">{{ errorMessage }}</span>
+        <button @click="errorMessage = null" class="ml-2 hover:bg-red-700 p-1 rounded">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </transition>
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex-1 flex items-center justify-center">
-      <div class="text-center text-white">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
-        <p class="text-lg">Connecting to meeting...</p>
+      <div class="text-center">
+        <div class="relative w-20 h-20 mx-auto mb-6">
+          <div class="absolute inset-0 rounded-full border-4 border-white/20"></div>
+          <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-white animate-spin"></div>
+        </div>
+        <p class="text-white text-lg font-medium mb-2">Joining meeting...</p>
+        <p class="text-gray-400 text-sm">Setting up your audio and video</p>
       </div>
     </div>
 
     <!-- Main Content -->
-    <main v-else class="flex-1 flex overflow-hidden">
+    <main v-else class="flex-1 flex items-center justify-center p-6 pt-24 pb-32">
       <!-- Video Grid -->
-      <div class="flex-1 p-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 h-full auto-rows-fr">
+      <div class="w-full h-full max-w-[1600px]">
+        <div 
+          :class="[
+            'grid gap-4 h-full w-full',
+            getGridClass
+          ]"
+        >
           <!-- Local Video -->
-          <div class="relative bg-gray-800 rounded-lg overflow-hidden aspect-video">
+          <div 
+            class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl group transition-all duration-300"
+            :class="{'ring-4 ring-blue-500': isLocalActive}"
+          >
             <video
               ref="localVideoRef"
               autoplay
               playsinline
               muted
-              class="w-full h-full object-cover bg-black"
+              class="w-full h-full object-cover"
             ></video>
-            <!-- Show placeholder only when no stream is available -->
-            <div v-if="!localStream" class="absolute inset-0 flex items-center justify-center bg-gray-700">
+            <!-- No Stream Placeholder -->
+            <div v-if="!localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="text-center">
-                <div class="text-4xl mb-2">👤</div>
-                <p class="text-white text-sm">{{ userName }} (You)</p>
+                <div class="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center mx-auto mb-4">
+                  <span class="text-white text-4xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
+                </div>
+                <p class="text-white text-lg font-medium">{{ userName }}</p>
               </div>
             </div>
-            <div class="absolute bottom-2 left-2 bg-black bg-opacity-60 px-2 py-1 rounded text-white text-xs">
-              {{ userName }} (You)
+            <!-- Name Badge -->
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-white font-medium text-sm">{{ userName }} (You)</span>
+                  <div v-if="hasAudio" class="flex items-center gap-1">
+                    <div class="w-1 h-3 bg-green-500 rounded animate-pulse"></div>
+                    <div class="w-1 h-4 bg-green-500 rounded animate-pulse" style="animation-delay: 0.1s"></div>
+                    <div class="w-1 h-2 bg-green-500 rounded animate-pulse" style="animation-delay: 0.2s"></div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <!-- Connection Quality -->
+                  <div class="flex items-center gap-1" title="Connection quality">
+                    <div class="w-1 h-2 bg-green-500 rounded"></div>
+                    <div class="w-1 h-3 bg-green-500 rounded"></div>
+                    <div class="w-1 h-4 bg-green-500 rounded"></div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div v-if="!hasAudio" class="absolute top-2 right-2 bg-red-600 p-1 rounded">
-              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+            <!-- Muted Indicator -->
+            <div v-if="!hasAudio" class="absolute top-3 right-3 bg-red-600 p-2 rounded-full shadow-lg">
+              <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
               </svg>
             </div>
           </div>
@@ -61,85 +132,187 @@
           <div
             v-for="[participantId, stream] in remoteStreams"
             :key="participantId"
-            class="relative bg-gray-800 rounded-lg overflow-hidden aspect-video"
+            class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl group transition-all duration-300"
           >
             <video
               :ref="el => setRemoteVideoRef(el, participantId)"
               autoplay
               playsinline
-              muted
-              class="w-full h-full object-cover bg-black"
+              class="w-full h-full object-cover"
             ></video>
-            <div class="absolute bottom-2 left-2 bg-black bg-opacity-60 px-2 py-1 rounded text-white text-xs">
-              {{ participants.get(participantId)?.userName || `Participant ${participantId.slice(0, 8)}` }}
+            <!-- Name Badge -->
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-white font-medium text-sm">
+                    {{ participants.get(participantId)?.userName || `Participant ${participantId.slice(0, 8)}` }}
+                  </span>
+                  <div class="flex items-center gap-1">
+                    <div class="w-1 h-3 bg-green-500 rounded animate-pulse"></div>
+                    <div class="w-1 h-4 bg-green-500 rounded animate-pulse" style="animation-delay: 0.1s"></div>
+                    <div class="w-1 h-2 bg-green-500 rounded animate-pulse" style="animation-delay: 0.2s"></div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1" title="Connection quality">
+                  <div class="w-1 h-2 bg-green-500 rounded"></div>
+                  <div class="w-1 h-3 bg-green-500 rounded"></div>
+                  <div class="w-1 h-4 bg-green-500 rounded"></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </main>
 
-    <!-- Control Bar -->
-    <footer class="bg-gray-800 px-4 py-4">
-      <div class="flex items-center justify-center gap-4">
-        <button
-          @click="handleToggleAudio"
-          :class="[
-            'p-4 rounded-full transition-colors',
-            hasAudio ? 'bg-gray-700 hover:bg-gray-600' : 'bg-red-600 hover:bg-red-700'
-          ]"
-          :disabled="isLoading"
-          title="Toggle Microphone"
-        >
-          <svg v-if="hasAudio" class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-          </svg>
-          <svg v-else class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-          </svg>
-        </button>
+    <!-- Bottom Control Bar -->
+    <footer class="absolute bottom-0 left-0 right-0 z-20 pb-8">
+      <div class="max-w-2xl mx-auto px-6">
+        <div class="bg-[#3C4043] rounded-full shadow-2xl px-6 py-4 backdrop-blur-xl">
+          <div class="flex items-center justify-between gap-2">
+            <!-- Left Controls -->
+            <div class="flex items-center gap-2">
+              <!-- Meeting Time -->
+              <div class="px-3 py-2 text-white text-sm font-medium">
+                {{ meetingDuration }}
+              </div>
+            </div>
 
-        <button
-          @click="handleToggleVideo"
-          :class="[
-            'p-4 rounded-full transition-colors',
-            hasVideo ? 'bg-gray-700 hover:bg-gray-600' : 'bg-red-600 hover:bg-red-700'
-          ]"
-          :disabled="isLoading"
-          title="Toggle Camera"
-        >
-          <svg v-if="hasVideo" class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
-          <svg v-else class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-          </svg>
-        </button>
+            <!-- Center Controls -->
+            <div class="flex items-center gap-3">
+              <!-- Microphone -->
+              <button
+                @click="handleToggleAudio"
+                :class="[
+                  'p-4 rounded-full transition-all duration-200 transform hover:scale-110',
+                  hasAudio ? 'bg-[#5F6368] hover:bg-[#6F7378]' : 'bg-red-600 hover:bg-red-700'
+                ]"
+                :disabled="isLoading"
+                :title="hasAudio ? 'Turn off microphone' : 'Turn on microphone'"
+              >
+                <svg v-if="hasAudio" class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd" />
+                </svg>
+                <svg v-else class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
+                </svg>
+              </button>
 
-        <button
-          @click="handleScreenShare"
-          :class="[
-            'p-4 rounded-full transition-colors',
-            hasScreenShare ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-700 hover:bg-gray-600'
-          ]"
-          :disabled="isLoading"
-          title="Share Screen"
-        >
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-        </button>
+              <!-- Camera -->
+              <button
+                @click="handleToggleVideo"
+                :class="[
+                  'p-4 rounded-full transition-all duration-200 transform hover:scale-110',
+                  hasVideo ? 'bg-[#5F6368] hover:bg-[#6F7378]' : 'bg-red-600 hover:bg-red-700'
+                ]"
+                :disabled="isLoading"
+                :title="hasVideo ? 'Turn off camera' : 'Turn on camera'"
+              >
+                <svg v-if="hasVideo" class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <svg v-else class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+              </button>
 
-        <button
-          @click="handleLeaveMeeting"
-          class="p-4 px-8 bg-red-600 hover:bg-red-700 rounded-full transition-colors"
-          :disabled="isLoading"
-          title="Leave Meeting"
-        >
-          <span class="text-white font-semibold">Leave</span>
-        </button>
+              <!-- Screen Share -->
+              <button
+                @click="handleScreenShare"
+                :class="[
+                  'p-4 rounded-full transition-all duration-200 transform hover:scale-110',
+                  hasScreenShare ? 'bg-blue-600 hover:bg-blue-700' : 'bg-[#5F6368] hover:bg-[#6F7378]'
+                ]"
+                :disabled="isLoading"
+                :title="hasScreenShare ? 'Stop sharing' : 'Share screen'"
+              >
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </button>
+
+              <!-- More Options -->
+              <button
+                class="p-4 rounded-full bg-[#5F6368] hover:bg-[#6F7378] transition-all duration-200 transform hover:scale-110"
+                title="More options"
+              >
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                </svg>
+              </button>
+
+              <!-- Leave Meeting -->
+              <button
+                @click="handleLeaveMeeting"
+                class="p-4 px-8 bg-red-600 hover:bg-red-700 rounded-full transition-all duration-200 transform hover:scale-110 shadow-lg"
+                :disabled="isLoading"
+                title="Leave meeting"
+              >
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- Right Controls -->
+            <div class="flex items-center gap-2">
+              <!-- Participants -->
+              <button
+                class="p-3 rounded-full bg-[#5F6368] hover:bg-[#6F7378] transition-all"
+                title="Show participants"
+              >
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </footer>
+
+    <!-- Meeting Info Panel -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="transform translate-x-full"
+      enter-to-class="transform translate-x-0"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="transform translate-x-0"
+      leave-to-class="transform translate-x-full"
+    >
+      <div v-if="showMeetingInfo" class="absolute top-0 right-0 bottom-0 w-96 bg-white shadow-2xl z-30 p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-semibold">Meeting details</h2>
+          <button @click="showMeetingInfo = false" class="p-2 hover:bg-gray-100 rounded-full">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="text-sm text-gray-600 block mb-1">Meeting ID</label>
+            <div class="flex items-center gap-2 bg-gray-100 p-3 rounded-lg">
+              <span class="text-sm font-mono flex-1">{{ meetingId }}</span>
+              <button 
+                @click="copyMeetingId"
+                class="text-blue-600 hover:text-blue-700 text-sm font-medium"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="text-sm text-gray-600 block mb-1">Your name</label>
+            <div class="bg-gray-100 p-3 rounded-lg text-sm">{{ userName }}</div>
+          </div>
+          <div>
+            <label class="text-sm text-gray-600 block mb-1">Duration</label>
+            <div class="bg-gray-100 p-3 rounded-lg text-sm">{{ meetingDuration }}</div>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -157,6 +330,11 @@ const localVideoRef = ref(null)
 const remoteVideoRefs = new Map()
 const isLoading = ref(true)
 const errorMessage = ref(null)
+const showMeetingInfo = ref(false)
+const currentTime = ref('')
+const meetingStartTime = ref(Date.now())
+const meetingDuration = ref('00:00')
+const isLocalActive = ref(false)
 
 // Route params
 const appName = import.meta.env.VITE_APP_NAME || 'Discus'
@@ -202,6 +380,50 @@ const {
 const totalParticipants = computed(() => {
   return 1 + (participants.value?.size || 0) // 1 (local) + remote participants
 })
+
+const getGridClass = computed(() => {
+  const total = totalParticipants.value
+  if (total === 1) return 'grid-cols-1'
+  if (total === 2) return 'grid-cols-1 lg:grid-cols-2'
+  if (total <= 4) return 'grid-cols-2'
+  if (total <= 6) return 'grid-cols-2 lg:grid-cols-3'
+  if (total <= 9) return 'grid-cols-2 lg:grid-cols-3'
+  return 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+})
+
+// Copy meeting ID
+const copyMeetingId = () => {
+  navigator.clipboard.writeText(meetingId.value)
+    .then(() => {
+      errorMessage.value = 'Meeting ID copied to clipboard!'
+      setTimeout(() => { errorMessage.value = null }, 2000)
+    })
+    .catch(() => {
+      errorMessage.value = 'Failed to copy meeting ID'
+    })
+}
+
+// Update time
+const updateTime = () => {
+  const now = new Date()
+  currentTime.value = now.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: true 
+  })
+  
+  // Update meeting duration
+  const duration = Math.floor((Date.now() - meetingStartTime.value) / 1000)
+  const hours = Math.floor(duration / 3600)
+  const minutes = Math.floor((duration % 3600) / 60)
+  const seconds = duration % 60
+  
+  if (hours > 0) {
+    meetingDuration.value = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  } else {
+    meetingDuration.value = `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
+}
 
 // Set remote video ref
 const setRemoteVideoRef = (el, participantId) => {
@@ -475,6 +697,13 @@ watch(remoteStreams, (streams) => {
 // Lifecycle hooks
 onMounted(() => {
   initializeMeeting()
+  updateTime()
+  const timeInterval = setInterval(updateTime, 1000)
+  
+  // Cleanup on unmount
+  onBeforeUnmount(() => {
+    clearInterval(timeInterval)
+  })
 })
 
 onBeforeUnmount(() => {
