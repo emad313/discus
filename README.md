@@ -2,6 +2,21 @@
 
 A Google Meet alternative built with Vue 3, Node.js, and Mediasoup. Supports 100+ concurrent participants without any third-party APIs.
 
+---
+
+## 📖 **NEW PC SETUP?**
+
+Setting up on another computer for development?
+
+- 🚀 **Quick Start:** [QUICK_SETUP.md](QUICK_SETUP.md) - 5-minute guide
+- 📋 **Detailed Guide:** [SETUP_ON_NEW_PC.md](SETUP_ON_NEW_PC.md) - Complete instructions
+- ✅ **Checklist:** [SETUP_CHECKLIST.md](SETUP_CHECKLIST.md) - Print and follow
+- 📚 **All Docs:** [INDEX.md](INDEX.md) - Complete documentation index
+
+**TL;DR:** Install Docker → Run `docker-compose up -d` → Done! ✨
+
+---
+
 ## 🚀 Features
 
 - ✅ 100+ participants per meeting
@@ -49,7 +64,12 @@ A Google Meet alternative built with Vue 3, Node.js, and Mediasoup. Supports 100
 
 ## 🚀 Quick Start
 
-### 🐳 **RECOMMENDED: Using Docker (100+ Users Ready)**
+### � **Setting Up On Another PC?**
+**→ See [SETUP_ON_NEW_PC.md](SETUP_ON_NEW_PC.md) for complete step-by-step guide**
+
+---
+
+### �🐳 **RECOMMENDED: Using Docker (100+ Users Ready)**
 
 **Perfect for production and easy deployment anywhere!**
 

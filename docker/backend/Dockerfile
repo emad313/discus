@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY backend/package*.json ./
 
 # Install dependencies and build Mediasoup
 RUN npm ci --only=production
@@ -30,7 +30,7 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 
 # Copy application code
-COPY . .
+COPY backend/ .
 
 # Create non-root user for security
 RUN useradd -m -u 1001 nodeuser && \

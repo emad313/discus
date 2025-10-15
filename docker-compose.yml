@@ -44,8 +44,8 @@ services:
   # Backend API + Mediasoup SFU
   backend:
     build:
-      context: ./backend
-      dockerfile: ../docker/backend/Dockerfile
+      context: .
+      dockerfile: docker/backend/Dockerfile
     container_name: discus-backend
     env_file:
       - ./backend/.env
@@ -86,8 +86,8 @@ services:
   # Frontend (Vue + Nginx)
   frontend:
     build:
-      context: ./frontend
-      dockerfile: ../docker/frontend/Dockerfile
+      context: .
+      dockerfile: docker/frontend/Dockerfile
     container_name: discus-frontend
     environment:
       VITE_API_URL: http://localhost:3000/api
