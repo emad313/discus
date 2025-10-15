@@ -256,6 +256,24 @@
 
             <!-- Right Controls -->
             <div class="flex items-center gap-2">
+              <!-- Chat -->
+              <button
+                @click="chatStore.toggleChat()"
+                class="relative p-3 rounded-full bg-[#5F6368] hover:bg-[#6F7378] transition-all"
+                title="Toggle chat"
+              >
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                <!-- Unread Badge -->
+                <span
+                  v-if="chatStore.unreadCount > 0"
+                  class="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                >
+                  {{ chatStore.unreadCount > 9 ? '9+' : chatStore.unreadCount }}
+                </span>
+              </button>
+              
               <!-- Participants -->
               <button
                 class="p-3 rounded-full bg-[#5F6368] hover:bg-[#6F7378] transition-all"
@@ -270,6 +288,26 @@
         </div>
       </div>
     </footer>
+
+    <!-- Chat Panel -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="transform translate-x-full"
+      enter-to-class="transform translate-x-0"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="transform translate-x-0"
+      leave-to-class="transform translate-x-full"
+    >
+      <ChatPanel
+        v-if="chatStore.chatOpen"
+        :current-user-id="socket?.id || ''"
+        :participant-count="totalParticipants"
+        @send-message="handleSendMessage"
+        @typing-start="handleChatTypingStart"
+        @typing-stop="handleChatTypingStop"
+        @close="chatStore.closeChat()"
+      />
+    </transition>
 
     <!-- Meeting Info Panel -->
     <transition
@@ -321,9 +359,13 @@ import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useWebRTC } from '../composables/useWebRTC'
 import { useMediaStream } from '../composables/useMediaStream'
+import { useChat } from '../composables/useChat'
+import { useChatStore } from '../stores/chat'
+import ChatPanel from '../components/ChatPanel.vue'
 
 const router = useRouter()
 const route = useRoute()
+const chatStore = useChatStore()
 
 // Refs
 const localVideoRef = ref(null)
@@ -353,6 +395,7 @@ const {
   remoteStreams,
   isConnected,
   participants,
+  socket,
 } = useWebRTC()
 
 const {
@@ -375,6 +418,15 @@ const {
   getAudioTrack,
   getScreenTrack,
 } = useMediaStream()
+
+// Initialize chat
+const {
+  sendMessage,
+  handleTypingStart,
+  handleTypingStop,
+  setupChatListeners,
+  cleanupChatListeners,
+} = useChat(socket, meetingId.value)
 
 // Computed
 const totalParticipants = computed(() => {
@@ -524,6 +576,9 @@ const initializeMeeting = async () => {
     isLoading.value = false
     console.log('[Meeting] Initialization complete!')
     
+    // Setup chat listeners
+    setupChatListeners()
+    
     // Now that loading is false, the video element should be rendered
     // Attach the stream to the video element
     await nextTick()
@@ -537,6 +592,24 @@ const initializeMeeting = async () => {
     errorMessage.value = error.message || 'Failed to join meeting'
     isLoading.value = false
   }
+}
+
+// Chat handlers
+const handleSendMessage = async (message) => {
+  try {
+    await sendMessage(message)
+  } catch (error) {
+    console.error('[Meeting] Failed to send message:', error)
+    errorMessage.value = 'Failed to send message'
+  }
+}
+
+const handleChatTypingStart = () => {
+  handleTypingStart()
+}
+
+const handleChatTypingStop = () => {
+  handleTypingStop()
 }
 
 // Handle toggle audio
@@ -707,6 +780,8 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  cleanupChatListeners()
+  chatStore.clearMessages()
   leaveRoom()
   stopLocalStream()
 })

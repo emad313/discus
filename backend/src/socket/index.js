@@ -277,6 +277,59 @@ export function setupSocketHandlers(io) {
       handlePeerDisconnect(socket);
     });
 
+    // ========== CHAT EVENTS ==========
+    
+    // Send chat message
+    socket.on('send-message', ({ meetingId, message, timestamp }, callback) => {
+      try {
+        const peer = peers.get(socket.id);
+        if (!peer) {
+          return callback({ error: 'Peer not found' });
+        }
+
+        const chatMessage = {
+          id: `${Date.now()}-${socket.id}`,
+          senderId: socket.id,
+          senderName: peer.userName,
+          message: message.trim(),
+          timestamp: timestamp || Date.now(),
+          meetingId,
+        };
+
+        logger.info(`Chat message from ${peer.userName} in ${meetingId}: ${message}`);
+
+        // Broadcast to all users in the meeting (including sender)
+        io.to(meetingId).emit('receive-message', chatMessage);
+
+        callback({ success: true, messageId: chatMessage.id });
+      } catch (error) {
+        logger.error('Error sending chat message:', error);
+        callback({ error: error.message });
+      }
+    });
+
+    // Typing indicator
+    socket.on('typing-start', ({ meetingId }) => {
+      const peer = peers.get(socket.id);
+      if (peer) {
+        socket.to(meetingId).emit('user-typing', {
+          userId: socket.id,
+          userName: peer.userName,
+        });
+      }
+    });
+
+    socket.on('typing-stop', ({ meetingId }) => {
+      const peer = peers.get(socket.id);
+      if (peer) {
+        socket.to(meetingId).emit('user-stopped-typing', {
+          userId: socket.id,
+        });
+      }
+    });
+
+    // ========== END CHAT EVENTS ==========
+
     // Disconnect
     socket.on('disconnect', () => {
       logger.info(`Client disconnected: ${socket.id}`);
