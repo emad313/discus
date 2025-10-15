@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: discus-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-discus}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-discus_password_change_in_production}
+      POSTGRES_DB: ${DB_NAME:-discus}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - discus-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U discus"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: discus-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password_change_in_production}
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - discus-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # Backend API + Mediasoup SFU
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/backend/Dockerfile
+    container_name: discus-backend
+    env_file:
+      - ./backend/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${DB_USER:-discus}:${DB_PASSWORD:-discus_password_change_in_production}@postgres:5432/${DB_NAME:-discus}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password_change_in_production}@redis:6379
+      MEDIASOUP_LISTEN_IP: 0.0.0.0
+      MEDIASOUP_ANNOUNCED_IP: ${PUBLIC_IP:-127.0.0.1}
+    ports:
+      - "3000:3000"
+      # WebRTC media ports
+      - "10000-10100:10000-10100/udp"
+      - "10000-10100:10000-10100/tcp"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - discus-network
+    restart: unless-stopped
+    # Increase limits for 100+ users
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '2'
+          memory: 2G
+
+  # Frontend (Vue + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/frontend/Dockerfile
+    container_name: discus-frontend
+    environment:
+      VITE_API_URL: http://localhost:3000/api
+      VITE_SOCKET_URL: http://localhost:3000
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - discus-network
+    restart: unless-stopped
+
+  # TURN/STUN Server (Coturn) - Essential for NAT traversal
+  coturn:
+    image: coturn/coturn:latest
+    container_name: discus-coturn
+    network_mode: host
+    environment:
+      - DETECT_EXTERNAL_IP=yes
+    volumes:
+      - ./docker/coturn/turnserver.conf:/etc/coturn/turnserver.conf
+    command: ["-c", "/etc/coturn/turnserver.conf"]
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  discus-network:
+    driver: bridge
