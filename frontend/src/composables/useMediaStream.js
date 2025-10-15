@@ -132,7 +132,7 @@ export function useMediaStream() {
   /**
    * Start local media stream (camera + microphone)
    */
-  const startLocalStream = async (videoEnabled = true, audioEnabled = true) => {
+  const startLocalStream = async (enableVideo = true, enableAudio = true) => {
     try {
       // Stop existing stream if any
       if (localStream.value) {
@@ -140,13 +140,13 @@ export function useMediaStream() {
       }
 
       const constraints = {
-        video: videoEnabled ? {
+        video: enableVideo ? {
           deviceId: selectedDevices.value.camera ? { exact: selectedDevices.value.camera } : undefined,
           width: { ideal: 1280 },
           height: { ideal: 720 },
           frameRate: { ideal: 30 },
         } : false,
-        audio: audioEnabled ? {
+        audio: enableAudio ? {
           deviceId: selectedDevices.value.microphone ? { exact: selectedDevices.value.microphone } : undefined,
           echoCancellation: true,
           noiseSuppression: true,

@@ -52,12 +52,16 @@ export function setupSocketHandlers(io) {
           userName,
         });
 
-        // Get list of existing peers
+        // Get list of existing peers with their producers
         const existingPeers = Array.from(room.peers.entries())
           .filter(([id]) => id !== socket.id)
           .map(([id, peer]) => ({
             peerId: id,
             userName: peer.userName,
+            producers: Array.from(peer.producers.entries()).map(([producerId, producer]) => ({
+              id: producerId,
+              kind: producer.kind,
+            })),
           }));
 
         // Send router RTP capabilities
@@ -175,6 +179,96 @@ export function setupSocketHandlers(io) {
           success: false,
           error: error.message,
         });
+      }
+    });
+
+    // Consume media from another peer
+    socket.on('consume', async ({ producerId, rtpCapabilities, transportId }, callback) => {
+      try {
+        const peer = peers.get(socket.id);
+        const room = rooms.get(peer.meetingId);
+
+        if (!room) {
+          throw new Error('Room not found');
+        }
+
+        // Find the transport to consume on
+        const transportData = peer.transports.get(transportId);
+        if (!transportData) {
+          throw new Error('Transport not found');
+        }
+
+        // Find the producer
+        let producer = null;
+        let producerPeer = null;
+        
+        for (const [peerId, peerData] of room.peers.entries()) {
+          if (peerData.producers.has(producerId)) {
+            producer = peerData.producers.get(producerId);
+            producerPeer = peerData;
+            break;
+          }
+        }
+
+        if (!producer) {
+          throw new Error('Producer not found');
+        }
+
+        // Check if router can consume
+        if (!room.router.canConsume({ producerId, rtpCapabilities })) {
+          throw new Error('Cannot consume - RTP capabilities mismatch');
+        }
+
+        // Create consumer
+        const consumer = await transportData.transport.consume({
+          producerId,
+          rtpCapabilities,
+          paused: false,
+        });
+
+        peer.consumers.set(consumer.id, consumer);
+
+        callback({
+          success: true,
+          id: consumer.id,
+          producerId: producer.id,
+          kind: consumer.kind,
+          rtpParameters: consumer.rtpParameters,
+        });
+
+        logger.info(`Peer ${socket.id} consuming ${consumer.kind} from producer ${producerId}`);
+
+      } catch (error) {
+        logger.error('Error consuming media:', error);
+        callback({
+          success: false,
+          error: error.message,
+        });
+      }
+    });
+
+    // Resume consumer (required to start receiving media)
+    socket.on('resume-consumer', async ({ consumerId }, callback) => {
+      try {
+        const peer = peers.get(socket.id);
+        const consumer = peer.consumers.get(consumerId);
+
+        if (!consumer) {
+          throw new Error('Consumer not found');
+        }
+
+        await consumer.resume();
+
+        logger.debug(`Resumed consumer ${consumerId} for peer ${socket.id}`);
+
+        if (callback) {
+          callback({ success: true });
+        }
+      } catch (error) {
+        logger.error('Error resuming consumer:', error);
+        if (callback) {
+          callback({ success: false, error: error.message });
+        }
       }
     });
 

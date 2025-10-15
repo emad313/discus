@@ -58,9 +58,11 @@ services:
       MEDIASOUP_ANNOUNCED_IP: ${PUBLIC_IP:-127.0.0.1}
     ports:
       - "3000:3000"
-      # WebRTC media ports
+      # WebRTC media ports - map to host ports
       - "10000-10100:10000-10100/udp"
       - "10000-10100:10000-10100/tcp"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy

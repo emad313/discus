@@ -83,7 +83,8 @@ export const mediasoupConfig = {
     ],
     enableUdp: true,
     enableTcp: true,
-    preferUdp: true,
+    preferUdp: false, // Prefer TCP for Docker/localhost reliability
+    preferTcp: true,
     initialAvailableOutgoingBitrate: 1000000,
     minimumAvailableOutgoingBitrate: 600000,
     maxSctpMessageSize: 262144,

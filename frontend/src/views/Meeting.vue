@@ -37,10 +37,10 @@
               autoplay
               playsinline
               muted
-              class="w-full h-full object-cover"
-              :class="{ 'hidden': !hasVideo }"
+              class="w-full h-full object-cover bg-black"
             ></video>
-            <div v-if="!hasVideo" class="absolute inset-0 flex items-center justify-center">
+            <!-- Show placeholder only when no stream is available -->
+            <div v-if="!localStream" class="absolute inset-0 flex items-center justify-center bg-gray-700">
               <div class="text-center">
                 <div class="text-4xl mb-2">👤</div>
                 <p class="text-white text-sm">{{ userName }} (You)</p>
@@ -59,7 +59,7 @@
 
           <!-- Remote Videos -->
           <div
-            v-for="(stream, participantId) in remoteStreams"
+            v-for="[participantId, stream] in remoteStreams"
             :key="participantId"
             class="relative bg-gray-800 rounded-lg overflow-hidden aspect-video"
           >
@@ -67,10 +67,11 @@
               :ref="el => setRemoteVideoRef(el, participantId)"
               autoplay
               playsinline
-              class="w-full h-full object-cover"
+              muted
+              class="w-full h-full object-cover bg-black"
             ></video>
             <div class="absolute bottom-2 left-2 bg-black bg-opacity-60 px-2 py-1 rounded text-white text-xs">
-              Participant {{ participantId.slice(0, 8) }}
+              {{ participants.get(participantId)?.userName || `Participant ${participantId.slice(0, 8)}` }}
             </div>
           </div>
         </div>
@@ -169,6 +170,7 @@ const {
   initialize: initWebRTC,
   joinRoom,
   produce,
+  consumePendingProducers,
   leaveRoom,
   remoteStreams,
   isConnected,
@@ -183,6 +185,7 @@ const {
   hasVideo,
   hasAudio,
   hasScreenShare,
+  permissionsGranted,
   requestPermissions,
   startLocalStream,
   stopLocalStream,
@@ -203,7 +206,18 @@ const totalParticipants = computed(() => {
 // Set remote video ref
 const setRemoteVideoRef = (el, participantId) => {
   if (el) {
+    console.log('[Meeting] Video ref created for peer:', participantId)
     remoteVideoRefs.set(participantId, el)
+    
+    // If we already have a stream for this participant, attach it now
+    const stream = remoteStreams.value.get(participantId)
+    if (stream) {
+      console.log('[Meeting] Attaching existing stream to new video element for peer:', participantId)
+      el.srcObject = stream
+      el.play()
+        .then(() => console.log('[Meeting] ✅ Video playing for peer:', participantId))
+        .catch(e => console.error('[Meeting] ❌ Play error:', e))
+    }
   }
 }
 
@@ -231,6 +245,8 @@ const initializeMeeting = async () => {
           initialVideo && permissionsGranted.value.camera,
           initialAudio && permissionsGranted.value.microphone
         )
+        console.log('[Meeting] Local stream started successfully')
+        // Note: Will attach to video element after loading completes
       } catch (streamError) {
         console.warn('[Meeting] Failed to start stream (continuing):', streamError.message)
         // Continue without stream
@@ -240,7 +256,8 @@ const initializeMeeting = async () => {
     }
 
     // Initialize WebRTC
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'
+    // Use empty string to connect to same origin (nginx will proxy to backend)
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || window.location.origin
     console.log('[Meeting] Initializing WebRTC...', socketUrl)
     await initWebRTC(socketUrl)
 
@@ -274,8 +291,25 @@ const initializeMeeting = async () => {
       }
     }
 
+    // Consume existing producers from peers who joined before us
+    try {
+      console.log('[Meeting] Consuming existing producers from other peers...')
+      await consumePendingProducers()
+    } catch (consumeError) {
+      console.error('[Meeting] Failed to consume pending producers:', consumeError)
+    }
+
     isLoading.value = false
     console.log('[Meeting] Initialization complete!')
+    
+    // Now that loading is false, the video element should be rendered
+    // Attach the stream to the video element
+    await nextTick()
+    if (localVideoRef.value && localStream.value) {
+      console.log('[Meeting] Post-init: Attaching stream to now-visible video element')
+      localVideoRef.value.srcObject = localStream.value
+      await localVideoRef.value.play().catch(e => console.log('[Meeting] Post-init play error:', e.message))
+    }
   } catch (error) {
     console.error('[Meeting] Initialization failed:', error)
     errorMessage.value = error.message || 'Failed to join meeting'
@@ -355,22 +389,88 @@ const handleLeaveMeeting = async () => {
 watch(localStream, (stream) => {
   nextTick(() => {
     if (localVideoRef.value && stream) {
+      console.log('[Meeting] Watch: Attaching local stream to video element')
+      console.log('[Meeting] Watch: Stream active?', stream.active)
+      console.log('[Meeting] Watch: Video tracks:', stream.getVideoTracks().map(t => ({
+        id: t.id,
+        label: t.label,
+        enabled: t.enabled,
+        readyState: t.readyState,
+        muted: t.muted
+      })))
       localVideoRef.value.srcObject = stream
+      // Ensure video plays
+      localVideoRef.value.play()
+        .then(() => console.log('[Meeting] Watch: Video playing successfully'))
+        .catch(e => console.log('[Meeting] Watch: Video autoplay error:', e.message))
+    } else {
+      console.log('[Meeting] Watch: Missing ref or stream', {
+        hasRef: !!localVideoRef.value,
+        hasStream: !!stream
+      })
     }
   })
-})
+}, { immediate: true })
 
 // Watch remote streams and attach to video elements
 watch(remoteStreams, (streams) => {
+  // Use double nextTick to ensure DOM is fully updated with new video elements
   nextTick(() => {
-    for (const [participantId, stream] of streams.entries()) {
-      const videoEl = remoteVideoRefs.get(participantId)
-      if (videoEl && stream) {
-        videoEl.srcObject = stream
+    nextTick(() => {
+      console.log('[Meeting] ===== Remote streams updated =====')
+      console.log('[Meeting] Total remote streams:', streams.size)
+      console.log('[Meeting] Remote video refs available:', remoteVideoRefs.size)
+      
+      for (const [participantId, stream] of streams.entries()) {
+        const videoEl = remoteVideoRefs.get(participantId)
+        console.log('[Meeting] Processing peer:', participantId)
+        console.log('[Meeting]   - Has video element?', !!videoEl)
+        console.log('[Meeting]   - Has stream?', !!stream)
+        
+        if (videoEl && stream) {
+          const tracks = stream.getTracks()
+          console.log('[Meeting]   - Stream ID:', stream.id)
+          console.log('[Meeting]   - Stream active?', stream.active)
+          console.log('[Meeting]   - Total tracks:', tracks.length)
+          tracks.forEach(track => {
+            console.log(`[Meeting]   - Track: ${track.kind}, enabled: ${track.enabled}, readyState: ${track.readyState}, id: ${track.id}`)
+          })
+          
+          console.log('[Meeting]   - Setting srcObject...')
+          videoEl.srcObject = stream
+          
+          console.log('[Meeting]   - Video element ready state:', videoEl.readyState)
+          console.log('[Meeting]   - Video element paused?', videoEl.paused)
+          
+          videoEl.play()
+            .then(() => {
+              console.log('[Meeting]   ✅ Video playing successfully for peer:', participantId)
+              console.log('[Meeting]   - Video dimensions:', videoEl.videoWidth, 'x', videoEl.videoHeight)
+            })
+            .catch(e => console.error('[Meeting]   ❌ Video play error:', e))
+        } else {
+          if (!videoEl) {
+            console.log('[Meeting]   ⚠️ No video element found for peer:', participantId)
+            console.log('[Meeting]   ⚠️ Will retry after next render cycle...')
+            // Retry after another tick to catch late-rendered elements
+            setTimeout(() => {
+              const retryEl = remoteVideoRefs.get(participantId)
+              if (retryEl && stream) {
+                console.log('[Meeting]   ✅ Found video element on retry for peer:', participantId)
+                retryEl.srcObject = stream
+                retryEl.play()
+                  .then(() => console.log('[Meeting]   ✅ Video playing after retry'))
+                  .catch(e => console.error('[Meeting]   ❌ Retry play error:', e))
+              }
+            }, 100)
+          }
+          if (!stream) console.log('[Meeting]   ⚠️ No stream found for peer:', participantId)
+        }
       }
-    }
+      console.log('[Meeting] ===== End remote streams update =====')
+    })
   })
-}, { deep: true })
+}, { deep: true, immediate: true })
 
 // Lifecycle hooks
 onMounted(() => {
