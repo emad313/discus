@@ -59,17 +59,43 @@ export function useMediaStream() {
    */
   const requestPermissions = async (video = true, audio = true) => {
     try {
-      const constraints = {
-        video: video ? {
+      // First check if mediaDevices is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Your browser does not support camera/microphone access')
+      }
+
+      // Try to get device list first
+      await getDevices()
+
+      // Build constraints based on available devices
+      const constraints = {}
+      
+      if (video && devices.value.cameras.length > 0) {
+        constraints.video = {
           width: { ideal: 1280 },
           height: { ideal: 720 },
           frameRate: { ideal: 30 },
-        } : false,
-        audio: audio ? {
+        }
+      } else {
+        constraints.video = false
+      }
+      
+      if (audio && devices.value.microphones.length > 0) {
+        constraints.audio = {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-        } : false,
+        }
+      } else {
+        constraints.audio = false
+      }
+
+      // If no devices available, return early
+      if (!constraints.video && !constraints.audio) {
+        console.warn('[Media] No camera or microphone devices found')
+        permissionsGranted.value.camera = false
+        permissionsGranted.value.microphone = false
+        return permissionsGranted.value
       }
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
@@ -83,16 +109,21 @@ export function useMediaStream() {
       // Stop the temporary stream
       stream.getTracks().forEach(track => track.stop())
 
-      // Get updated device list
+      // Get updated device list with labels
       await getDevices()
 
       return permissionsGranted.value
     } catch (error) {
       console.error('[Media] Permission denied:', error)
+      
+      // Set permissions to false
+      permissionsGranted.value.camera = false
+      permissionsGranted.value.microphone = false
+      
       if (error.name === 'NotAllowedError') {
-        throw new Error('Camera/microphone permission denied')
+        throw new Error('Camera/microphone permission denied. Please allow access and refresh.')
       } else if (error.name === 'NotFoundError') {
-        throw new Error('No camera/microphone found')
+        throw new Error('No camera/microphone found. Please connect a device and refresh.')
       }
       throw error
     }

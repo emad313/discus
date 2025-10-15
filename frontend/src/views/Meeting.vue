@@ -197,7 +197,7 @@ const {
 
 // Computed
 const totalParticipants = computed(() => {
-  return 1 + participants.value.size // 1 (local) + remote participants
+  return 1 + (participants.value?.size || 0) // 1 (local) + remote participants
 })
 
 // Set remote video ref
@@ -213,13 +213,31 @@ const initializeMeeting = async () => {
     isLoading.value = true
     errorMessage.value = null
 
-    // Request media permissions
+    // Request media permissions (but don't fail if denied)
     console.log('[Meeting] Requesting permissions...')
-    await requestPermissions(initialVideo, initialAudio)
+    try {
+      await requestPermissions(initialVideo, initialAudio)
+    } catch (permError) {
+      console.warn('[Meeting] Media permission error (continuing anyway):', permError.message)
+      errorMessage.value = permError.message
+      // Continue without media - user can still join meeting
+    }
 
-    // Start local stream
-    console.log('[Meeting] Starting local stream...')
-    await startLocalStream(initialVideo, initialAudio)
+    // Start local stream if permissions granted
+    if (permissionsGranted.value.camera || permissionsGranted.value.microphone) {
+      try {
+        console.log('[Meeting] Starting local stream...')
+        await startLocalStream(
+          initialVideo && permissionsGranted.value.camera,
+          initialAudio && permissionsGranted.value.microphone
+        )
+      } catch (streamError) {
+        console.warn('[Meeting] Failed to start stream (continuing):', streamError.message)
+        // Continue without stream
+      }
+    } else {
+      console.log('[Meeting] No media permissions, joining without camera/mic')
+    }
 
     // Initialize WebRTC
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'
@@ -234,8 +252,12 @@ const initializeMeeting = async () => {
     if (hasVideo.value) {
       const videoTrack = getVideoTrack()
       if (videoTrack) {
-        console.log('[Meeting] Producing video track...')
-        await produce(videoTrack, 'video')
+        try {
+          console.log('[Meeting] Producing video track...')
+          await produce(videoTrack, 'video')
+        } catch (produceError) {
+          console.error('[Meeting] Failed to produce video:', produceError)
+        }
       }
     }
 
@@ -243,8 +265,12 @@ const initializeMeeting = async () => {
     if (hasAudio.value) {
       const audioTrack = getAudioTrack()
       if (audioTrack) {
-        console.log('[Meeting] Producing audio track...')
-        await produce(audioTrack, 'audio')
+        try {
+          console.log('[Meeting] Producing audio track...')
+          await produce(audioTrack, 'audio')
+        } catch (produceError) {
+          console.error('[Meeting] Failed to produce audio:', produceError)
+        }
       }
     }
 

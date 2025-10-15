@@ -10,6 +10,7 @@ const recvTransport = ref(null)
 const producers = ref(new Map()) // Map of producerId -> producer
 const consumers = ref(new Map()) // Map of consumerId -> consumer
 const remoteStreams = ref(new Map()) // Map of participantId -> MediaStream
+const participants = ref(new Map()) // Map of participantId -> participant info
 const isConnected = ref(false)
 const isProducing = ref(false)
 
@@ -380,6 +381,12 @@ export function useWebRTC() {
     // New producer available (another participant)
     socket.value.on('new-producer', async ({ producerId, participantId }) => {
       console.log('[WebRTC] New producer available:', producerId, 'from:', participantId)
+      
+      // Add participant if not exists
+      if (!participants.value.has(participantId)) {
+        participants.value.set(participantId, { id: participantId })
+      }
+      
       try {
         await consume(producerId, participantId)
       } catch (error) {
@@ -404,6 +411,10 @@ export function useWebRTC() {
     // Participant left
     socket.value.on('participant-left', ({ participantId }) => {
       console.log('[WebRTC] Participant left:', participantId)
+      
+      // Remove from participants map
+      participants.value.delete(participantId)
+      
       // Clean up remote stream
       const stream = remoteStreams.value.get(participantId)
       if (stream) {
@@ -487,6 +498,7 @@ export function useWebRTC() {
     producers,
     consumers,
     remoteStreams,
+    participants,
     producerIds,
     consumerIds,
     remoteParticipants,
