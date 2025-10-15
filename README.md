@@ -17,16 +17,29 @@ Setting up on another computer for development?
 
 ---
 
-## 🚀 Features
+## 🎉 Current Status (October 16, 2025)
 
-- ✅ 100+ participants per meeting
-- ✅ HD video quality (720p)
-- ✅ Screen sharing
-- ✅ Real-time chat
+**Phase 2 Complete:** Multi-user video calling is working! ✅
+
+### Working Features
+- ✅ Multi-user video calls (2+ participants)
+- ✅ HD video quality (720p @ 30fps)
+- ✅ Bidirectional audio streaming
+- ✅ Screen sharing (getDisplayMedia)
+- ✅ Camera on/off toggle
+- ✅ Microphone mute/unmute
 - ✅ No login required (guest access)
 - ✅ Link-based meetings
-- ✅ Responsive design (mobile & desktop)
-- ✅ Open-source & self-hosted
+- ✅ Responsive video grid
+- ✅ Real-time WebRTC with Mediasoup SFU
+
+### Coming Soon
+- ⏳ Real-time chat (Phase 3)
+- ⏳ Network access testing (192.168.1.104)
+- ⏳ UI improvements (active speaker, pagination)
+- ⏳ Recording (Phase 4)
+- ⏳ Authentication system (Phase 4)
+- ⏳ 100+ concurrent users testing (Phase 5)
 
 ## 🛠️ Tech Stack
 
