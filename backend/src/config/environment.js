@@ -7,8 +7,10 @@ export default {
   host: process.env.HOST || 'localhost',
   nodeEnv: process.env.NODE_ENV || 'development',
 
-  // CORS
-  corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  // CORS - support comma-separated origins
+  corsOrigin: process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+    : ['http://localhost:5173', 'http://localhost'],
 
   // Database
   database: {

@@ -8,7 +8,10 @@ export function useChat(socket, meetingId) {
   // Send message
   const sendMessage = (message) => {
     return new Promise((resolve, reject) => {
-      if (!socket || !socket.connected) {
+      // Handle both ref and direct socket object
+      const socketInstance = socket?.value || socket
+      
+      if (!socketInstance || !socketInstance.connected) {
         return reject(new Error('Socket not connected'))
       }
 
@@ -16,7 +19,7 @@ export function useChat(socket, meetingId) {
         return reject(new Error('Message cannot be empty'))
       }
 
-      socket.emit(
+      socketInstance.emit(
         'send-message',
         {
           meetingId,
@@ -41,9 +44,10 @@ export function useChat(socket, meetingId) {
 
   // Handle typing indicator
   const handleTypingStart = () => {
-    if (!socket || !socket.connected) return
+    const socketInstance = socket?.value || socket
+    if (!socketInstance || !socketInstance.connected) return
 
-    socket.emit('typing-start', { meetingId })
+    socketInstance.emit('typing-start', { meetingId })
 
     // Auto-stop typing after 3 seconds
     if (typingTimeout.value) {
@@ -56,9 +60,10 @@ export function useChat(socket, meetingId) {
   }
 
   const handleTypingStop = () => {
-    if (!socket || !socket.connected) return
+    const socketInstance = socket?.value || socket
+    if (!socketInstance || !socketInstance.connected) return
 
-    socket.emit('typing-stop', { meetingId })
+    socketInstance.emit('typing-stop', { meetingId })
 
     if (typingTimeout.value) {
       clearTimeout(typingTimeout.value)
@@ -82,20 +87,32 @@ export function useChat(socket, meetingId) {
 
   // Setup socket listeners
   const setupChatListeners = () => {
-    if (!socket) return
+    // Handle both ref and direct socket object
+    const socketInstance = socket?.value || socket
+    if (!socketInstance || typeof socketInstance.on !== 'function') {
+      console.warn('[Chat] Socket not available or not initialized yet')
+      return
+    }
 
-    socket.on('receive-message', handleReceiveMessage)
-    socket.on('user-typing', handleUserTyping)
-    socket.on('user-stopped-typing', handleUserStoppedTyping)
+    socketInstance.on('receive-message', handleReceiveMessage)
+    socketInstance.on('user-typing', handleUserTyping)
+    socketInstance.on('user-stopped-typing', handleUserStoppedTyping)
+    console.log('[Chat] Chat listeners setup successfully')
   }
 
   // Cleanup socket listeners
   const cleanupChatListeners = () => {
-    if (!socket) return
+    // Handle both ref and direct socket object
+    const socketInstance = socket?.value || socket
+    if (!socketInstance || typeof socketInstance.off !== 'function') {
+      console.warn('[Chat] Socket not available for cleanup')
+      return
+    }
 
-    socket.off('receive-message', handleReceiveMessage)
-    socket.off('user-typing', handleUserTyping)
-    socket.off('user-stopped-typing', handleUserStoppedTyping)
+    socketInstance.off('receive-message', handleReceiveMessage)
+    socketInstance.off('user-typing', handleUserTyping)
+    socketInstance.off('user-stopped-typing', handleUserStoppedTyping)
+    console.log('[Chat] Chat listeners cleaned up')
 
     if (typingTimeout.value) {
       clearTimeout(typingTimeout.value)

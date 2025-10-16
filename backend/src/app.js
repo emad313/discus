@@ -24,8 +24,21 @@ const io = new Server(httpServer, {
 app.use(helmet({
   contentSecurityPolicy: false,
 }));
+
+// CORS middleware - handle array or string
+const corsOrigin = Array.isArray(config.corsOrigin) ? config.corsOrigin : [config.corsOrigin];
 app.use(cors({
-  origin: config.corsOrigin,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (corsOrigin.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      logger.warn(`CORS blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json());
