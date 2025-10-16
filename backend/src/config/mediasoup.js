@@ -29,7 +29,14 @@ export const mediasoupConfig = {
         kind: 'audio',
         mimeType: 'audio/opus',
         clockRate: 48000,
-        channels: 2,
+        channels: 2, // Stereo
+        parameters: {
+          useinbandfec: 1,              // Forward error correction
+          maxaveragebitrate: 128000,    // 128 kbps (high quality)
+          maxplaybackrate: 48000,       // 48 kHz playback
+          stereo: 1,                    // Enable stereo
+          ptime: 20,                    // 20ms packet time for lower latency
+        },
       },
       {
         kind: 'video',

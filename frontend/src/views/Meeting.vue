@@ -1009,12 +1009,33 @@ const initializeMeeting = async () => {
       return
     }
     
+    // Save session to localStorage (for refresh recovery)
+    try {
+      sessionStorage.setItem('active-meeting', JSON.stringify({
+        meetingId: meetingId.value,
+        userName: userName.value,
+        joinedAt: Date.now(),
+      }))
+      console.log('[Meeting] Session saved for refresh recovery')
+    } catch (e) {
+      console.warn('[Meeting] Failed to save session:', e)
+    }
+    
     // Set host status
     if (joinResponse.isHost !== undefined) {
       isHost.value = joinResponse.isHost
       hostId.value = joinResponse.hostId
       isLocked.value = joinResponse.isLocked
       console.log('[Meeting] Host status:', isHost.value ? 'YES' : 'NO')
+    }
+    
+    // Load chat history from backend
+    if (joinResponse.chatHistory && joinResponse.chatHistory.length > 0) {
+      console.log(`[Meeting] Loading ${joinResponse.chatHistory.length} chat messages from history`)
+      joinResponse.chatHistory.forEach(msg => {
+        chatStore.addMessage(msg)
+      })
+      console.log('[Meeting] Chat history loaded')
     }
 
     // Produce video track if enabled
@@ -1177,6 +1198,14 @@ const handleScreenShare = async () => {
 // Handle leave meeting
 const handleLeaveMeeting = async () => {
   try {
+    // Clear session storage on intentional leave
+    try {
+      sessionStorage.removeItem('active-meeting')
+      console.log('[Meeting] Session cleared')
+    } catch (e) {
+      console.warn('[Meeting] Failed to clear session:', e)
+    }
+    
     await leaveRoom()
     stopLocalStream()
     router.push('/')

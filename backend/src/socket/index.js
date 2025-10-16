@@ -1,6 +1,7 @@
 import { logger } from '../utils/logger.js';
 import { getMediasoupWorkerManager } from '../services/mediasoup/worker.js';
 import { createWebRtcTransport, connectTransport } from '../services/mediasoup/transport.js';
+import { saveChatMessage, getChatHistory, createMeeting, addParticipant } from '../services/database.js';
 
 // Store room state
 const rooms = new Map(); // meetingId -> room data
@@ -100,15 +101,33 @@ export function setupSocketHandlers(io) {
         if (room.peers.size === 0) {
           room.hostId = socket.id;
           logger.info(`${socket.id} (${userName}) is now the host of room ${meetingId}`);
+          
+          // Create meeting in database
+          try {
+            await createMeeting(meetingId, socket.id);
+          } catch (dbError) {
+            logger.warn('[Database] Failed to create meeting (continuing):', dbError.message);
+          }
         }
 
         // Store peer info
         const isHost = socket.id === room.hostId;
+        
+        // Add participant to database
+        let participantDbId = null;
+        try {
+          const dbResult = await addParticipant(meetingId, socket.id, userName, isHost);
+          participantDbId = dbResult.id;
+        } catch (dbError) {
+          logger.warn('[Database] Failed to add participant (continuing):', dbError.message);
+        }
+        
         peers.set(socket.id, {
           socketId: socket.id,
           meetingId,
           userName,
           isHost,
+          participantDbId, // Store DB ID for chat messages
           transports: new Map(),
           producers: new Map(),
           consumers: new Map(),
@@ -134,6 +153,23 @@ export function setupSocketHandlers(io) {
             })),
           }));
 
+        // Load chat history from database
+        let chatHistory = [];
+        try {
+          const messages = await getChatHistory(meetingId, 100);
+          chatHistory = messages.map(msg => ({
+            id: msg.id,
+            senderId: msg.participant_id || 'unknown',
+            senderName: msg.username,
+            message: msg.message,
+            timestamp: new Date(msg.sent_at).getTime(),
+            meetingId,
+          }));
+          logger.debug(`[Database] Loaded ${chatHistory.length} chat messages for ${meetingId}`);
+        } catch (dbError) {
+          logger.warn('[Database] Failed to load chat history (continuing):', dbError.message);
+        }
+
         // Send router RTP capabilities
         callback({
           success: true,
@@ -142,6 +178,7 @@ export function setupSocketHandlers(io) {
           isHost: socket.id === room.hostId,
           hostId: room.hostId,
           isLocked: room.isLocked,
+          chatHistory, // Send chat history to new joiner
         });
 
         // Emit participant update to preview rooms
@@ -366,7 +403,7 @@ export function setupSocketHandlers(io) {
     // ========== CHAT EVENTS ==========
     
     // Send chat message
-    socket.on('send-message', ({ meetingId, message, timestamp }, callback) => {
+    socket.on('send-message', async ({ meetingId, message, timestamp }, callback) => {
       try {
         const peer = peers.get(socket.id);
         if (!peer) {
@@ -383,6 +420,19 @@ export function setupSocketHandlers(io) {
         };
 
         logger.info(`Chat message from ${peer.userName} in ${meetingId}: ${message}`);
+
+        // Save to database
+        try {
+          await saveChatMessage({
+            meetingId,
+            participantId: peer.participantDbId,
+            username: peer.userName,
+            message: message.trim(),
+          });
+          logger.debug(`[Database] Chat message saved for ${meetingId}`);
+        } catch (dbError) {
+          logger.warn('[Database] Failed to save chat message (continuing):', dbError.message);
+        }
 
         // Broadcast to all users in the meeting (including sender)
         io.to(meetingId).emit('receive-message', chatMessage);

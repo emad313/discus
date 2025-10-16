@@ -85,6 +85,9 @@ export function useMediaStream() {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
+          sampleRate: 48000,              // High quality 48kHz sampling
+          channelCount: 2,                 // Stereo audio
+          sampleSize: 16,                  // 16-bit audio depth
         }
       } else {
         constraints.audio = false
@@ -151,6 +154,9 @@ export function useMediaStream() {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
+          sampleRate: 48000,              // High quality 48kHz sampling
+          channelCount: 2,                 // Stereo audio
+          sampleSize: 16,                  // 16-bit audio depth
         } : false,
       }
 
@@ -270,6 +276,9 @@ export function useMediaStream() {
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true,
+            sampleRate: 48000,              // High quality 48kHz sampling
+            channelCount: 2,                 // Stereo audio
+            sampleSize: 16,                  // 16-bit audio depth
           },
         })
         
@@ -383,6 +392,9 @@ export function useMediaStream() {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
+          sampleRate: 48000,              // High quality 48kHz sampling
+          channelCount: 2,                 // Stereo audio
+          sampleSize: 16,                  // 16-bit audio depth
         },
       })
 
