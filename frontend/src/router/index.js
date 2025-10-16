@@ -10,6 +10,11 @@ const router = createRouter({
       component: Home
     },
     {
+      path: '/prejoin/:id',
+      name: 'prejoin',
+      component: () => import('../views/PreJoin.vue')
+    },
+    {
       path: '/meeting/:id',
       name: 'meeting',
       component: () => import('../views/Meeting.vue')

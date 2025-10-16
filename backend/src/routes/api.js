@@ -82,6 +82,39 @@ router.get('/meetings/:id', (req, res) => {
 });
 
 /**
+ * GET /api/meetings/:id/participants
+ * Get current participants in a meeting (for pre-join preview)
+ */
+router.get('/meetings/:id/participants', (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!isValidMeetingId(id)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid meeting ID format',
+      });
+    }
+
+    // Get participants from socket.io server via shared state
+    // For now, return empty array (will be populated by socket.io in real-time)
+    const meeting = meetings.get(id);
+    
+    res.json({
+      success: true,
+      participants: meeting?.participants || [],
+      count: meeting?.participants?.length || 0,
+    });
+  } catch (error) {
+    logger.error('Error fetching participants:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch participants',
+    });
+  }
+});
+
+/**
  * POST /api/meetings/:id/validate
  * Validate if a meeting exists and is active
  */
@@ -128,4 +161,6 @@ router.post('/meetings/:id/validate', (req, res) => {
   }
 });
 
+// Export meetings map for use by socket.io
+export { meetings };
 export default router;

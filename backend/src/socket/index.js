@@ -10,6 +10,39 @@ export function setupSocketHandlers(io) {
   io.on('connection', (socket) => {
     logger.info(`Client connected: ${socket.id}`);
 
+    // Preview room (get participants without joining)
+    socket.on('preview-room', ({ meetingId }) => {
+      try {
+        logger.info(`Client ${socket.id} previewing room: ${meetingId}`);
+        
+        // Join a preview room channel to receive updates
+        socket.join(`preview-${meetingId}`);
+        
+        // Send current participants
+        const room = rooms.get(meetingId);
+        if (room) {
+          const participants = Array.from(room.peers.values()).map(peer => ({
+            id: peer.socketId,
+            userName: peer.userName,
+            audioEnabled: peer.producers.has('audio'),
+            videoEnabled: peer.producers.has('video'),
+          }));
+          
+          socket.emit('room-participants-update', {
+            meetingId,
+            participants,
+          });
+        } else {
+          socket.emit('room-participants-update', {
+            meetingId,
+            participants: [],
+          });
+        }
+      } catch (error) {
+        logger.error('Error previewing room:', error);
+      }
+    });
+
     // Join meeting room
     socket.on('join-meeting', async ({ meetingId, userName }, callback) => {
       try {
@@ -69,6 +102,19 @@ export function setupSocketHandlers(io) {
           success: true,
           rtpCapabilities: room.router.rtpCapabilities,
           peers: existingPeers,
+        });
+
+        // Emit participant update to preview rooms
+        const participants = Array.from(room.peers.values()).map(peer => ({
+          id: peer.socketId,
+          userName: peer.userName,
+          audioEnabled: peer.producers.has('audio'),
+          videoEnabled: peer.producers.has('video'),
+        }));
+        
+        io.to(`preview-${meetingId}`).emit('room-participants-update', {
+          meetingId,
+          participants,
         });
 
         logger.info(`User ${userName} joined meeting ${meetingId}. Total peers: ${room.peers.size}`);
@@ -369,6 +415,19 @@ function handlePeerDisconnect(socket) {
     socket.to(meetingId).emit('peer-left', {
       peerId: socket.id,
       userName,
+    });
+
+    // Emit participant update to preview rooms
+    const participants = Array.from(room.peers.values()).map(peer => ({
+      id: peer.socketId,
+      userName: peer.userName,
+      audioEnabled: peer.producers.has('audio'),
+      videoEnabled: peer.producers.has('video'),
+    }));
+    
+    socket.to(`preview-${meetingId}`).emit('room-participants-update', {
+      meetingId,
+      participants,
     });
 
     // Clean up room if empty

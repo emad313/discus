@@ -220,13 +220,26 @@ const appName = import.meta.env.VITE_APP_NAME || 'Discus'
 function createNewMeeting() {
   // Generate a random meeting ID
   const meetingId = generateMeetingId()
-  router.push(`/meeting/${meetingId}`)
+  // Redirect to pre-join screen instead of directly to meeting
+  router.push(`/prejoin/${meetingId}`)
 }
 
 function joinMeeting() {
   if (meetingCode.value.trim()) {
-    router.push(`/join/${meetingCode.value.trim()}`)
+    // Extract meeting ID from code/link and go to pre-join
+    const meetingId = extractMeetingId(meetingCode.value.trim())
+    router.push(`/prejoin/${meetingId}`)
   }
+}
+
+function extractMeetingId(input) {
+  // If it's a full URL, extract the ID
+  if (input.includes('http')) {
+    const parts = input.split('/')
+    return parts[parts.length - 1]
+  }
+  // Otherwise treat it as the meeting ID
+  return input
 }
 
 function generateMeetingId() {
