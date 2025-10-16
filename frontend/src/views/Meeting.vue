@@ -925,9 +925,6 @@ const updateTime = () => {
   }
 }
 
-// Track which participants are currently being played to avoid duplicate play() calls
-const playingParticipants = new Set()
-
 // Set remote video ref
 const setRemoteVideoRef = (el, participantId) => {
   if (el) {
@@ -940,20 +937,18 @@ const setRemoteVideoRef = (el, participantId) => {
       console.log('[Meeting] Attaching existing stream to new video element for peer:', participantId)
       el.srcObject = stream
       
-      // Only attempt to play if we're not already playing this participant
-      if (!playingParticipants.has(participantId)) {
-        playingParticipants.add(participantId)
-        el.play()
-          .then(() => {
-            console.log('[Meeting] ✅ Video playing for peer:', participantId)
-            // Remove from set after a short delay to allow for re-plays if needed
-            setTimeout(() => playingParticipants.delete(participantId), 500)
-          })
-          .catch(e => {
-            console.error('[Meeting] ❌ Play error:', e)
-            playingParticipants.delete(participantId)
-          })
-      }
+      // Attempt to play
+      el.play()
+        .then(() => {
+          console.log('[Meeting] ✅ Video playing for peer:', participantId)
+        })
+        .catch(e => {
+          console.error('[Meeting] ❌ Play error:', e)
+          // Retry after a short delay
+          setTimeout(() => {
+            el.play().catch(e2 => console.error('[Meeting] ❌ Retry play error:', e2))
+          }, 100)
+        })
     }
   }
 }
@@ -1244,18 +1239,12 @@ watch(remoteStreams, (streams) => {
             console.log(`[Meeting]   - Track: ${track.kind}, enabled: ${track.enabled}, readyState: ${track.readyState}, id: ${track.id}`)
           })
           
-          // Only set srcObject if it's different to avoid interrupting ongoing play() attempts
+          // Always set srcObject if it's different
           if (videoEl.srcObject !== stream) {
             console.log('[Meeting]   - Setting srcObject...')
             videoEl.srcObject = stream
-          }
-          
-          console.log('[Meeting]   - Video element ready state:', videoEl.readyState)
-          console.log('[Meeting]   - Video element paused?', videoEl.paused)
-          
-          // Only play if not already playing this participant
-          if (!playingParticipants.has(participantId) && videoEl.paused) {
-            playingParticipants.add(participantId)
+            
+            // Force play after setting srcObject
             videoEl.play()
               .then(() => {
                 console.log('[Meeting]   ✅ Video playing successfully for peer:', participantId)
@@ -1267,16 +1256,22 @@ watch(remoteStreams, (streams) => {
                   console.log('[Meeting]   🎤 Starting active speaker monitoring for:', participantId)
                   startMonitoring(participantId, audioTrack)
                 }
-                
-                // Remove from set after a short delay
-                setTimeout(() => playingParticipants.delete(participantId), 500)
               })
               .catch(e => {
                 console.error('[Meeting]   ❌ Video play error:', e)
-                playingParticipants.delete(participantId)
+                // Retry after a short delay
+                setTimeout(() => {
+                  videoEl.play().catch(e2 => console.error('[Meeting]   ❌ Retry play error:', e2))
+                }, 100)
               })
           } else {
-            console.log('[Meeting]   ⏭️ Skipping play() - already playing or play in progress for:', participantId)
+            console.log('[Meeting]   - srcObject already set, ensuring playback...')
+            // Even if srcObject is the same, ensure video is playing
+            if (videoEl.paused) {
+              videoEl.play()
+                .then(() => console.log('[Meeting]   ✅ Video resumed for peer:', participantId))
+                .catch(e => console.error('[Meeting]   ❌ Resume play error:', e))
+            }
           }
         } else {
           if (!videoEl) {
@@ -1288,19 +1283,13 @@ watch(remoteStreams, (streams) => {
               if (retryEl && stream && retryEl.srcObject !== stream) {
                 console.log('[Meeting]   ✅ Found video element on retry for peer:', participantId)
                 retryEl.srcObject = stream
-                
-                if (!playingParticipants.has(participantId)) {
-                  playingParticipants.add(participantId)
-                  retryEl.play()
-                    .then(() => {
-                      console.log('[Meeting]   ✅ Video playing after retry')
-                      setTimeout(() => playingParticipants.delete(participantId), 500)
-                    })
-                    .catch(e => {
-                      console.error('[Meeting]   ❌ Retry play error:', e)
-                      playingParticipants.delete(participantId)
-                    })
-                }
+                retryEl.play()
+                  .then(() => {
+                    console.log('[Meeting]   ✅ Video playing after retry')
+                  })
+                  .catch(e => {
+                    console.error('[Meeting]   ❌ Retry play error:', e)
+                  })
               }
             }, 100)
           }
