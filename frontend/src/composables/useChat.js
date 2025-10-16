@@ -105,7 +105,7 @@ export function useChat(socket, meetingId) {
     // Handle both ref and direct socket object
     const socketInstance = socket?.value || socket
     if (!socketInstance || typeof socketInstance.off !== 'function') {
-      console.warn('[Chat] Socket not available for cleanup')
+      // Socket already disconnected, no cleanup needed (this is normal during leave)
       return
     }
 

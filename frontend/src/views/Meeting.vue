@@ -276,7 +276,9 @@
               
               <!-- Participants -->
               <button
+                @click="showParticipants = !showParticipants"
                 class="p-3 rounded-full bg-[#5F6368] hover:bg-[#6F7378] transition-all"
+                :class="{ 'bg-blue-600 hover:bg-blue-700': showParticipants }"
                 title="Show participants"
               >
                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -306,6 +308,28 @@
         @typing-start="handleChatTypingStart"
         @typing-stop="handleChatTypingStop"
         @close="chatStore.closeChat()"
+      />
+    </transition>
+
+    <!-- Participants Panel -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="transform translate-x-full"
+      enter-to-class="transform translate-x-0"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="transform translate-x-0"
+      leave-to-class="transform translate-x-full"
+    >
+      <ParticipantsPanel
+        v-if="showParticipants"
+        :participant-count="totalParticipants"
+        :remote-participants="participants"
+        :local-user-name="userName"
+        :meeting-id="meetingId"
+        :is-audio-enabled="isAudioEnabled"
+        :is-video-enabled="isVideoEnabled"
+        @close="showParticipants = false"
+        @update-name="updateUserName"
       />
     </transition>
 
@@ -362,6 +386,7 @@ import { useMediaStream } from '../composables/useMediaStream'
 import { useChat } from '../composables/useChat'
 import { useChatStore } from '../stores/chat'
 import ChatPanel from '../components/ChatPanel.vue'
+import ParticipantsPanel from '../components/ParticipantsPanel.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -373,6 +398,7 @@ const remoteVideoRefs = new Map()
 const isLoading = ref(true)
 const errorMessage = ref(null)
 const showMeetingInfo = ref(false)
+const showParticipants = ref(false)
 const currentTime = ref('')
 const meetingStartTime = ref(Date.now())
 const meetingDuration = ref('00:00')
@@ -610,6 +636,13 @@ const handleChatTypingStart = () => {
 
 const handleChatTypingStop = () => {
   handleTypingStop()
+}
+
+// Update user name
+const updateUserName = (newName) => {
+  userName.value = newName
+  console.log('[Meeting] User name updated to:', newName)
+  // TODO: Emit socket event to update name for other participants
 }
 
 // Handle toggle audio
