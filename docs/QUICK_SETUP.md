@@ -1,132 +1,126 @@
-# 🚀 Quick Setup - Native Dependencies
+# ⚡ Quick Setup Guide - TL;DR
 
-## Current Status
-
-✅ **Python 3.13** - Installed  
-✅ **node-gyp** - Installed  
-❌ **C++ Build Tools** - **REQUIRED** for Mediasoup
+**Run Discus on another PC in 5 minutes**
 
 ---
 
-## 🎯 What You Need to Do
+## 📋 What You Need
 
-### Windows (Your System)
+1. **Docker Desktop** (that's it!)
 
-**You MUST install Visual Studio Build Tools to use Mediasoup:**
+---
 
-#### Option 1: Automated Script (Recommended)
+## 🚀 Steps
 
-Run from project root:
+### 1. Install Docker
+- **Windows/Mac:** Download from https://www.docker.com/products/docker-desktop/
+- **Linux:** `curl -fsSL https://get.docker.com | sh`
+- Restart computer after installation
+
+### 2. Get the Project
 ```bash
-./scripts/install-mediasoup.bat
+# Option A: Clone from GitHub
+git clone https://github.com/emad313/discus.git
+cd discus
+
+# Option B: Copy folder from USB/network
+# Just copy the entire 'discus' folder
 ```
 
-This will:
-1. ✅ Install node-gyp (already done)
-2. Guide you to download Visual Studio Build Tools
-3. Rebuild Mediasoup after installation
+### 3. Configure (Optional)
+```bash
+# If .env doesn't exist, create it:
+cp .env.example .env
 
-#### Option 2: Manual Installation
-
-1. **Download Visual Studio Build Tools**  
-   https://aka.ms/vs/17/release/vs_BuildTools.exe
-
-2. **Run installer and select:**
-   - ✅ Desktop development with C++
-   - ✅ MSVC v143 compiler
-   - ✅ Windows 10/11 SDK
-
-3. **Install** (requires ~7 GB, takes 10-20 minutes)
-
-4. **RESTART YOUR COMPUTER** (important!)
-
-5. **Rebuild Mediasoup:**
-   ```bash
-   cd backend
-   npm rebuild mediasoup
-   ```
-
-6. **Start the server:**
-   ```bash
-   npm run dev
-   ```
-
----
-
-## ⚡ Why Is This Needed?
-
-Mediasoup is a **C++ application** that provides:
-- High-performance video routing for 100+ users
-- Low latency (< 50ms)
-- Efficient CPU usage
-- Industry-standard WebRTC SFU
-
-It needs to be compiled from C++ source code, which requires a C++ compiler.
-
----
-
-## 🔄 Alternative: Skip for Now
-
-If you want to continue development without WebRTC:
-
-**The app will work without Mediasoup for:**
-- ✅ UI development
-- ✅ API testing
-- ✅ Socket.io messaging
-- ✅ State management
-- ❌ Video/audio calls (requires Mediasoup)
-
-The server will start with this warning:
-```
-[WARN] Mediasoup initialization failed
-[INFO] Server will continue without WebRTC support
+# Edit .env to change passwords (optional for development)
 ```
 
+### 4. Start Everything
+```bash
+docker-compose up -d
+```
+
+### 5. Wait ~5-10 minutes
+- First time: Downloads images + builds (10 min)
+- Later: Uses cache (2 min)
+
+### 6. Done! 🎉
+- Open: http://localhost
+- Backend: http://localhost:3000
+
 ---
 
-## 📚 Complete Guide
-
-See **[docs/INSTALL_MEDIASOUP.md](../docs/INSTALL_MEDIASOUP.md)** for:
-- Detailed installation steps
-- Troubleshooting guide
-- Linux/Mac instructions
-- Docker alternative
-
----
-
-## ✅ Verify Installation
-
-After installing Build Tools and restarting:
+## 🔍 Check Status
 
 ```bash
-# Check if compiler is available
-where cl.exe
+# See all services
+docker-compose ps
 
-# Should output path to compiler
-
-# Rebuild Mediasoup
-cd backend
-npm rebuild mediasoup
-
-# Start server
-npm run dev
-
-# Should see:
-# [INFO] Worker 0 created [pid:XXXX]
-# [INFO] Worker 1 created [pid:XXXX]
-# [INFO] Mediasoup workers initialized successfully
+# Should show 5 running containers:
+# ✅ discus-frontend
+# ✅ discus-backend
+# ✅ discus-postgres
+# ✅ discus-redis
+# ✅ discus-coturn
 ```
 
 ---
 
-## 🆘 Need Help?
+## 📝 Useful Commands
 
-1. Check [docs/INSTALL_MEDIASOUP.md](../docs/INSTALL_MEDIASOUP.md) for troubleshooting
-2. Run the automated script: `./scripts/install-mediasoup.bat`
-3. Or open an issue on GitHub
+```bash
+# View logs
+docker-compose logs -f
+
+# Restart
+docker-compose restart
+
+# Stop
+docker-compose down
+
+# Update after code changes
+docker-compose up -d --build
+```
 
 ---
 
-**Estimated Time:** 20-30 minutes (mostly waiting for download/install)  
-**Disk Space:** ~7 GB for Build Tools  
-**Required:** Administrator privileges
+## 🆘 Problems?
+
+### Docker command not found
+→ Install Docker Desktop and restart computer
+
+### Port 80 already in use
+→ Stop other web servers (IIS, Apache, etc.)
+
+### Containers won't start
+→ Check logs: `docker-compose logs backend`
+
+### Need more help?
+→ Read [SETUP_ON_NEW_PC.md](SETUP_ON_NEW_PC.md) for detailed troubleshooting
+
+---
+
+## ✅ Success Looks Like
+
+```bash
+$ docker-compose ps
+NAME              STATUS
+discus-backend    Up (healthy)
+discus-frontend   Up (healthy)
+discus-postgres   Up (healthy)
+discus-redis      Up (healthy)
+discus-coturn     Up
+```
+
+**Browser:** http://localhost shows Discus landing page
+
+**Backend logs:** Shows "4 Mediasoup workers created"
+
+---
+
+**That's it! No Node.js, Python, or build tools needed. Docker does everything!**
+
+For detailed documentation, see:
+- [SETUP_ON_NEW_PC.md](SETUP_ON_NEW_PC.md) - Complete setup guide
+- [DEPLOYMENT_SUCCESS.md](DEPLOYMENT_SUCCESS.md) - What's running
+- [PROJECT_STATUS.md](PROJECT_STATUS.md) - Technical details

@@ -8,10 +8,10 @@ A Google Meet alternative built with Vue 3, Node.js, and Mediasoup. Supports 100
 
 Setting up on another computer for development?
 
-- 🚀 **Quick Start:** [QUICK_SETUP.md](QUICK_SETUP.md) - 5-minute guide
-- 📋 **Detailed Guide:** [SETUP_ON_NEW_PC.md](SETUP_ON_NEW_PC.md) - Complete instructions
-- ✅ **Checklist:** [SETUP_CHECKLIST.md](SETUP_CHECKLIST.md) - Print and follow
-- 📚 **All Docs:** [INDEX.md](INDEX.md) - Complete documentation index
+- 🚀 **Quick Start:** [QUICK_SETUP.md](docs/QUICK_SETUP.md) - 5-minute guide
+- 📋 **Detailed Guide:** [SETUP_ON_NEW_PC.md](docs/SETUP_ON_NEW_PC.md) - Complete instructions
+- ✅ **Checklist:** [SETUP_CHECKLIST.md](docs/SETUP_CHECKLIST.md) - Print and follow
+- 📚 **All Docs:** [INDEX.md](docs/INDEX.md) - Complete documentation index
 
 **TL;DR:** Install Docker → Run `docker-compose up -d` → Done! ✨
 
@@ -77,12 +77,12 @@ Setting up on another computer for development?
 
 ## 🚀 Quick Start
 
-### � **Setting Up On Another PC?**
-**→ See [SETUP_ON_NEW_PC.md](SETUP_ON_NEW_PC.md) for complete step-by-step guide**
+### 🖥️ **Setting Up On Another PC?**
+**→ See [SETUP_ON_NEW_PC.md](docs/SETUP_ON_NEW_PC.md) for complete step-by-step guide**
 
 ---
 
-### �🐳 **RECOMMENDED: Using Docker (100+ Users Ready)**
+### 🐳 **RECOMMENDED: Using Docker (100+ Users Ready)**
 
 **Perfect for production and easy deployment anywhere!**
 
@@ -166,7 +166,7 @@ npm run dev
 - [x] TURN/STUN server (Coturn)
 - [ ] WebRTC implementation (Phase 2)
 
-See [PROJECT_ROADMAP.md](PROJECT_ROADMAP.md) for the complete timeline.
+See [PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md) for the complete timeline.
 
 ## 🤝 Contributing
 

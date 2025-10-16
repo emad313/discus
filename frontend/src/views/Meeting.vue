@@ -21,6 +21,9 @@
         </div>
       </div>
       <div class="flex items-center gap-3">
+        <!-- Layout Switcher -->
+        <LayoutSwitcher @layout-change="handleLayoutChange" />
+        
         <!-- Meeting Info Button -->
         <button
           @click="showMeetingInfo = !showMeetingInfo"
@@ -70,18 +73,21 @@
 
     <!-- Main Content -->
     <main v-else class="flex-1 flex items-center justify-center p-6 pt-24 pb-32">
-      <!-- Video Grid -->
-      <div class="w-full h-full max-w-[1600px]">
+      <!-- Grid Layout -->
+      <div v-if="currentLayout === 'grid'" class="w-full h-full max-w-[1800px]">
         <div 
           :class="[
-            'grid gap-4 h-full w-full',
+            'grid h-full w-full transition-all duration-500 ease-in-out auto-rows-fr',
             getGridClass
           ]"
         >
           <!-- Local Video -->
           <div 
-            class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl group transition-all duration-300"
-            :class="{'ring-4 ring-blue-500': isLocalActive}"
+            class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl group transition-all duration-300 hover:scale-[1.02] hover:shadow-3xl"
+            :class="[
+              {'ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)] animate-pulse': isLocalSpeaking},
+              totalParticipants === 1 ? 'max-w-4xl max-h-[80vh]' : ''
+            ]"
           >
             <video
               ref="localVideoRef"
@@ -132,7 +138,11 @@
           <div
             v-for="[participantId, stream] in remoteStreams"
             :key="participantId"
-            class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl group transition-all duration-300"
+            class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl group transition-all duration-300 hover:scale-[1.02] hover:shadow-3xl hover:z-10"
+            :class="[
+              {'ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)] animate-pulse': activeSpeakerId === participantId},
+              totalParticipants === 2 ? 'max-w-4xl max-h-[80vh]' : ''
+            ]"
           >
             <video
               :ref="el => setRemoteVideoRef(el, participantId)"
@@ -159,6 +169,123 @@
                   <div class="w-1 h-4 bg-green-500 rounded"></div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spotlight Layout -->
+      <div v-else-if="currentLayout === 'spotlight'" class="w-full h-full flex gap-4">
+        <!-- Main spotlight video (large) -->
+        <div class="flex-1 flex items-center justify-center">
+          <div
+            v-if="spotlightParticipant"
+            class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl w-full h-full max-h-full"
+            :class="{'ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]': activeSpeakerId === spotlightParticipant}"
+          >
+            <video
+              :ref="el => setRemoteVideoRef(el, spotlightParticipant)"
+              autoplay
+              playsinline
+              class="w-full h-full object-contain"
+            ></video>
+          </div>
+          <!-- Local video in spotlight if no remote participants -->
+          <div
+            v-else
+            class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl w-full max-w-4xl aspect-video"
+            :class="{'ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]': isLocalSpeaking}"
+          >
+            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover"></video>
+            <div v-if="!localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+              <div class="w-32 h-32 rounded-full bg-blue-600 flex items-center justify-center">
+                <span class="text-white text-5xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Thumbnail strip (bottom) -->
+        <div class="flex gap-2 flex-wrap content-start max-h-full overflow-y-auto" style="max-width: 160px;">
+          <!-- Local thumbnail -->
+          <div
+            @click="setSpotlightParticipant(null)"
+            class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all w-36 h-24"
+            :class="{'ring-2 ring-blue-500': !spotlightParticipant}"
+          >
+            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover"></video>
+            <div class="absolute bottom-1 left-1 text-white text-xs bg-black/60 px-2 py-1 rounded">You</div>
+          </div>
+
+          <!-- Remote thumbnails -->
+          <div
+            v-for="{ id, stream } in thumbnailParticipants"
+            :key="id"
+            @click="setSpotlightParticipant(id)"
+            class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all w-36 h-24"
+            :class="{'ring-2 ring-blue-500': spotlightParticipant === id}"
+          >
+            <video :ref="el => setRemoteVideoRef(el, id)" autoplay playsinline class="w-full h-full object-cover"></video>
+            <div class="absolute bottom-1 left-1 text-white text-xs bg-black/60 px-2 py-1 rounded">
+              {{ participants.get(id)?.userName || 'Guest' }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar Layout -->
+      <div v-else-if="currentLayout === 'sidebar'" class="w-full h-full flex gap-4">
+        <!-- Main video area (large, left side) -->
+        <div class="flex-1 flex items-center justify-center">
+          <div
+            v-if="spotlightParticipant"
+            class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl w-full h-full"
+            :class="{'ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]': activeSpeakerId === spotlightParticipant}"
+          >
+            <video
+              :ref="el => setRemoteVideoRef(el, spotlightParticipant)"
+              autoplay
+              playsinline
+              class="w-full h-full object-contain"
+            ></video>
+          </div>
+          <div
+            v-else
+            class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl w-full max-w-4xl aspect-video"
+            :class="{'ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]': isLocalSpeaking}"
+          >
+            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover"></video>
+            <div v-if="!localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+              <div class="w-32 h-32 rounded-full bg-blue-600 flex items-center justify-center">
+                <span class="text-white text-5xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar (right side, vertical) -->
+        <div class="flex flex-col gap-3 overflow-y-auto" style="width: 280px;">
+          <!-- Local video in sidebar -->
+          <div
+            @click="setSpotlightParticipant(null)"
+            class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all aspect-video"
+            :class="{'ring-2 ring-blue-500': !spotlightParticipant}"
+          >
+            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover"></video>
+            <div class="absolute bottom-2 left-2 text-white text-sm bg-black/70 px-2 py-1 rounded">You</div>
+          </div>
+
+          <!-- Remote videos in sidebar -->
+          <div
+            v-for="{ id, stream } in thumbnailParticipants"
+            :key="id"
+            @click="setSpotlightParticipant(id)"
+            class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all aspect-video"
+            :class="{'ring-2 ring-blue-500': spotlightParticipant === id}"
+          >
+            <video :ref="el => setRemoteVideoRef(el, id)" autoplay playsinline class="w-full h-full object-cover"></video>
+            <div class="absolute bottom-2 left-2 text-white text-sm bg-black/70 px-2 py-1 rounded">
+              {{ participants.get(id)?.userName || 'Guest' }}
             </div>
           </div>
         </div>
@@ -231,13 +358,18 @@
                 </svg>
               </button>
 
-              <!-- More Options -->
+              <!-- Settings -->
               <button
-                class="p-4 rounded-full bg-[#5F6368] hover:bg-[#6F7378] transition-all duration-200 transform hover:scale-110"
-                title="More options"
+                @click="showSettings = !showSettings"
+                :class="[
+                  'p-4 rounded-full transition-all duration-200 transform hover:scale-110',
+                  showSettings ? 'bg-blue-600 hover:bg-blue-700' : 'bg-[#5F6368] hover:bg-[#6F7378]'
+                ]"
+                title="Settings"
               >
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </button>
 
@@ -333,6 +465,23 @@
       />
     </transition>
 
+    <!-- Settings Panel -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="transform translate-x-full"
+      enter-to-class="transform translate-x-0"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="transform translate-x-0"
+      leave-to-class="transform translate-x-full"
+    >
+      <SettingsPanel
+        v-if="showSettings"
+        :display-name="userName"
+        @close="showSettings = false"
+        @update-name="updateUserName"
+      />
+    </transition>
+
     <!-- Meeting Info Panel -->
     <transition
       enter-active-class="transition duration-300 ease-out"
@@ -384,9 +533,12 @@ import { useRouter, useRoute } from 'vue-router'
 import { useWebRTC } from '../composables/useWebRTC'
 import { useMediaStream } from '../composables/useMediaStream'
 import { useChat } from '../composables/useChat'
+import { useActiveSpeaker } from '../composables/useActiveSpeaker'
 import { useChatStore } from '../stores/chat'
 import ChatPanel from '../components/ChatPanel.vue'
 import ParticipantsPanel from '../components/ParticipantsPanel.vue'
+import LayoutSwitcher from '../components/LayoutSwitcher.vue'
+import SettingsPanel from '../components/SettingsPanel.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -399,10 +551,13 @@ const isLoading = ref(true)
 const errorMessage = ref(null)
 const showMeetingInfo = ref(false)
 const showParticipants = ref(false)
+const showSettings = ref(false)
 const currentTime = ref('')
 const meetingStartTime = ref(Date.now())
 const meetingDuration = ref('00:00')
 const isLocalActive = ref(false)
+const currentLayout = ref('grid')
+const spotlightParticipant = ref(null)
 
 // Route params
 const appName = import.meta.env.VITE_APP_NAME || 'Discus'
@@ -454,20 +609,108 @@ const {
   cleanupChatListeners,
 } = useChat(socket, meetingId.value)
 
+// Initialize active speaker detection
+const {
+  activeSpeakerId,
+  audioLevels,
+  startMonitoring,
+  stopMonitoring,
+  startDetection,
+  stopDetection,
+  cleanup: cleanupActiveSpeaker
+} = useActiveSpeaker()
+
 // Computed
 const totalParticipants = computed(() => {
   return 1 + (participants.value?.size || 0) // 1 (local) + remote participants
 })
 
+const isLocalSpeaking = computed(() => {
+  return activeSpeakerId.value === socket.value?.id
+})
+
 const getGridClass = computed(() => {
   const total = totalParticipants.value
-  if (total === 1) return 'grid-cols-1'
-  if (total === 2) return 'grid-cols-1 lg:grid-cols-2'
-  if (total <= 4) return 'grid-cols-2'
-  if (total <= 6) return 'grid-cols-2 lg:grid-cols-3'
-  if (total <= 9) return 'grid-cols-2 lg:grid-cols-3'
-  return 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+  
+  // 1 user: Large centered video (like Google Meet when alone)
+  if (total === 1) {
+    return 'grid-cols-1 place-items-center'
+  }
+  
+  // 2 users: Side by side (equal split)
+  if (total === 2) {
+    return 'grid-cols-1 md:grid-cols-2 gap-4'
+  }
+  
+  // 3-4 users: 2x2 grid
+  if (total <= 4) {
+    return 'grid-cols-2 gap-4'
+  }
+  
+  // 5-6 users: 2x3 grid on desktop, 2 columns on mobile
+  if (total <= 6) {
+    return 'grid-cols-2 lg:grid-cols-3 gap-4'
+  }
+  
+  // 7-9 users: 3x3 grid on desktop, 2 columns on mobile
+  if (total <= 9) {
+    return 'grid-cols-2 lg:grid-cols-3 gap-3'
+  }
+  
+  // 10-12 users: 3x4 grid
+  if (total <= 12) {
+    return 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3'
+  }
+  
+  // 13-16 users: 4x4 grid
+  if (total <= 16) {
+    return 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2'
+  }
+  
+  // 17-25 users: 5x5 grid with smaller gaps
+  if (total <= 25) {
+    return 'grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2'
+  }
+  
+  // 26+ users: Dense 6-column grid
+  return 'grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1'
 })
+
+// Get participants for spotlight mode (all except the spotlighted one)
+const thumbnailParticipants = computed(() => {
+  const thumbnails = []
+  
+  // Add remote participants
+  for (const [participantId, stream] of remoteStreams.value) {
+    if (participantId !== spotlightParticipant.value) {
+      thumbnails.push({ id: participantId, stream, type: 'remote' })
+    }
+  }
+  
+  return thumbnails
+})
+
+// Handle layout change
+const handleLayoutChange = (layout) => {
+  currentLayout.value = layout
+  console.log(`[Meeting] Layout changed to: ${layout}`)
+  
+  // Auto-select active speaker for spotlight if not manually selected
+  if (layout === 'spotlight' && !spotlightParticipant.value) {
+    if (activeSpeakerId.value) {
+      spotlightParticipant.value = activeSpeakerId.value
+    } else if (remoteStreams.value.size > 0) {
+      // Default to first remote participant
+      spotlightParticipant.value = Array.from(remoteStreams.value.keys())[0]
+    }
+  }
+}
+
+// Switch spotlight participant
+const setSpotlightParticipant = (participantId) => {
+  spotlightParticipant.value = participantId
+  console.log(`[Meeting] Spotlight participant: ${participantId}`)
+}
 
 // Copy meeting ID
 const copyMeetingId = () => {
@@ -731,6 +974,13 @@ watch(localStream, (stream) => {
       localVideoRef.value.play()
         .then(() => console.log('[Meeting] Watch: Video playing successfully'))
         .catch(e => console.log('[Meeting] Watch: Video autoplay error:', e.message))
+      
+      // Monitor local audio for active speaker detection
+      const localAudioTrack = stream.getAudioTracks()[0]
+      if (localAudioTrack && socket.value?.id) {
+        console.log('[Meeting] 🎤 Starting active speaker monitoring for local user')
+        startMonitoring(socket.value.id, localAudioTrack)
+      }
     } else {
       console.log('[Meeting] Watch: Missing ref or stream', {
         hasRef: !!localVideoRef.value,
@@ -774,6 +1024,13 @@ watch(remoteStreams, (streams) => {
             .then(() => {
               console.log('[Meeting]   ✅ Video playing successfully for peer:', participantId)
               console.log('[Meeting]   - Video dimensions:', videoEl.videoWidth, 'x', videoEl.videoHeight)
+              
+              // Start monitoring audio for active speaker detection
+              const audioTrack = stream.getAudioTracks()[0]
+              if (audioTrack) {
+                console.log('[Meeting]   🎤 Starting active speaker monitoring for:', participantId)
+                startMonitoring(participantId, audioTrack)
+              }
             })
             .catch(e => console.error('[Meeting]   ❌ Video play error:', e))
         } else {
@@ -806,6 +1063,10 @@ onMounted(() => {
   updateTime()
   const timeInterval = setInterval(updateTime, 1000)
   
+  // Start active speaker detection
+  startDetection()
+  console.log('[Meeting] Active speaker detection started')
+  
   // Cleanup on unmount
   onBeforeUnmount(() => {
     clearInterval(timeInterval)
@@ -814,8 +1075,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   cleanupChatListeners()
+  cleanupActiveSpeaker()
   chatStore.clearMessages()
   leaveRoom()
   stopLocalStream()
+  console.log('[Meeting] Cleaned up active speaker detection')
 })
 </script>
