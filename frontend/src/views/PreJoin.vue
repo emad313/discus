@@ -417,7 +417,7 @@ const changeMicrophone = async () => {
 // Fetch existing participants
 const fetchParticipants = async () => {
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/meetings/${meetingId.value}/participants`)
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/meetings/${meetingId.value}/participants`)
     if (response.ok) {
       const data = await response.json()
       existingParticipants.value = data.participants || []
@@ -431,7 +431,7 @@ const fetchParticipants = async () => {
 
 // Connect to socket for real-time participant updates
 const connectSocket = () => {
-  const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+  const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
   socket = io(socketUrl, {
     transports: ['websocket', 'polling']
   })
