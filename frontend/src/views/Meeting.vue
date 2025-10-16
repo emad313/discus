@@ -1,5 +1,8 @@
 <template>
   <div class="h-screen flex flex-col bg-[#202124] relative">
+    <!-- Toast Notifications -->
+    <ToastContainer />
+    
     <!-- Top Bar -->
     <header class="absolute top-0 left-0 right-0 z-20 px-6 py-4 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent">
       <div class="flex items-center gap-4">
@@ -59,6 +62,29 @@
       </div>
     </transition>
 
+    <!-- Screen Sharing Banner -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="transform -translate-y-full opacity-0"
+      enter-to-class="transform translate-y-0 opacity-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="transform translate-y-0 opacity-100"
+      leave-to-class="transform -translate-y-full opacity-0"
+    >
+      <div v-if="hasScreenShare" class="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-2xl flex items-center gap-3">
+        <svg class="w-5 h-5 flex-shrink-0 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+        <span class="text-sm font-medium">You are sharing your screen</span>
+        <button
+          @click="handleScreenShare"
+          class="ml-2 bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-sm font-medium transition-colors"
+        >
+          Stop sharing
+        </button>
+      </div>
+    </transition>
+
     <!-- Loading State -->
     <div v-if="isLoading" class="flex-1 flex items-center justify-center">
       <div class="text-center">
@@ -105,32 +131,42 @@
                 <p class="text-white text-lg font-medium">{{ userName }}</p>
               </div>
             </div>
-            <!-- Name Badge -->
-            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+            <!-- Persistent Name Badge & Status -->
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-3">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                  <span class="text-white font-medium text-sm">{{ userName }} (You)</span>
-                  <div v-if="hasAudio" class="flex items-center gap-1">
-                    <div class="w-1 h-3 bg-green-500 rounded animate-pulse"></div>
-                    <div class="w-1 h-4 bg-green-500 rounded animate-pulse" style="animation-delay: 0.1s"></div>
-                    <div class="w-1 h-2 bg-green-500 rounded animate-pulse" style="animation-delay: 0.2s"></div>
+                  <span class="text-white font-medium text-sm drop-shadow">{{ userName }} (You)</span>
+                  <!-- Audio Level Indicator -->
+                  <div v-if="hasAudio && isLocalSpeaking" class="flex items-center gap-0.5">
+                    <div class="w-0.5 h-3 bg-green-400 rounded animate-pulse"></div>
+                    <div class="w-0.5 h-4 bg-green-400 rounded animate-pulse" style="animation-delay: 0.1s"></div>
+                    <div class="w-0.5 h-2 bg-green-400 rounded animate-pulse" style="animation-delay: 0.2s"></div>
                   </div>
                 </div>
-                <div class="flex items-center gap-2">
-                  <!-- Connection Quality -->
-                  <div class="flex items-center gap-1" title="Connection quality">
-                    <div class="w-1 h-2 bg-green-500 rounded"></div>
-                    <div class="w-1 h-3 bg-green-500 rounded"></div>
-                    <div class="w-1 h-4 bg-green-500 rounded"></div>
-                  </div>
+                <!-- Connection Quality - Always Visible -->
+                <div class="flex items-center gap-0.5" title="Connection quality: Good">
+                  <div class="w-1 h-2 bg-green-400 rounded"></div>
+                  <div class="w-1 h-3 bg-green-400 rounded"></div>
+                  <div class="w-1 h-4 bg-green-400 rounded"></div>
                 </div>
               </div>
             </div>
-            <!-- Muted Indicator -->
-            <div v-if="!hasAudio" class="absolute top-3 right-3 bg-red-600 p-2 rounded-full shadow-lg">
-              <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
-              </svg>
+            
+            <!-- Status Indicators (Top Right) -->
+            <div class="absolute top-3 right-3 flex gap-2">
+              <!-- Muted Indicator -->
+              <div v-if="!hasAudio" class="bg-red-600 p-2 rounded-lg shadow-lg backdrop-blur-sm" title="Microphone off">
+                <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <!-- Camera Off Indicator -->
+              <div v-if="!hasVideo" class="bg-gray-700 p-2 rounded-lg shadow-lg backdrop-blur-sm" title="Camera off">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                </svg>
+              </div>
             </div>
           </div>
 
@@ -150,25 +186,41 @@
               playsinline
               class="w-full h-full object-cover"
             ></video>
-            <!-- Name Badge -->
-            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+            <!-- Persistent Name Badge & Status -->
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-3">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                  <span class="text-white font-medium text-sm">
-                    {{ participants.get(participantId)?.userName || `Participant ${participantId.slice(0, 8)}` }}
+                  <span class="text-white font-medium text-sm drop-shadow">
+                    {{ participants.get(participantId)?.userName || `Guest ${participantId.slice(0, 6)}` }}
                   </span>
-                  <div class="flex items-center gap-1">
-                    <div class="w-1 h-3 bg-green-500 rounded animate-pulse"></div>
-                    <div class="w-1 h-4 bg-green-500 rounded animate-pulse" style="animation-delay: 0.1s"></div>
-                    <div class="w-1 h-2 bg-green-500 rounded animate-pulse" style="animation-delay: 0.2s"></div>
+                  <!-- Audio Level Indicator (when speaking) -->
+                  <div v-if="activeSpeakerId === participantId" class="flex items-center gap-0.5">
+                    <div class="w-0.5 h-3 bg-green-400 rounded animate-pulse"></div>
+                    <div class="w-0.5 h-4 bg-green-400 rounded animate-pulse" style="animation-delay: 0.1s"></div>
+                    <div class="w-0.5 h-2 bg-green-400 rounded animate-pulse" style="animation-delay: 0.2s"></div>
                   </div>
                 </div>
-                <div class="flex items-center gap-1" title="Connection quality">
-                  <div class="w-1 h-2 bg-green-500 rounded"></div>
-                  <div class="w-1 h-3 bg-green-500 rounded"></div>
-                  <div class="w-1 h-4 bg-green-500 rounded"></div>
+                <!-- Connection Quality - Always Visible -->
+                <div class="flex items-center gap-0.5" title="Connection quality: Good">
+                  <div class="w-1 h-2 bg-green-400 rounded"></div>
+                  <div class="w-1 h-3 bg-green-400 rounded"></div>
+                  <div class="w-1 h-4 bg-green-400 rounded"></div>
                 </div>
               </div>
+            </div>
+            
+            <!-- Status Indicators (Top Right) -->
+            <div class="absolute top-3 right-3 flex gap-2">
+              <!-- Pin Button (on hover) -->
+              <button 
+                class="bg-gray-800/80 hover:bg-gray-700 p-2 rounded-lg shadow-lg backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Pin participant"
+                @click="setSpotlightParticipant(participantId)"
+              >
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -500,9 +552,10 @@
             </svg>
           </button>
         </div>
-        <div class="space-y-4">
+        <div class="space-y-6">
+          <!-- Meeting ID Section -->
           <div>
-            <label class="text-sm text-gray-600 block mb-1">Meeting ID</label>
+            <label class="text-sm text-gray-600 block mb-2">Meeting ID</label>
             <div class="flex items-center gap-2 bg-gray-100 p-3 rounded-lg">
               <span class="text-sm font-mono flex-1">{{ meetingId }}</span>
               <button 
@@ -513,13 +566,63 @@
               </button>
             </div>
           </div>
+
+          <!-- Meeting Link Section -->
           <div>
-            <label class="text-sm text-gray-600 block mb-1">Your name</label>
-            <div class="bg-gray-100 p-3 rounded-lg text-sm">{{ userName }}</div>
+            <label class="text-sm text-gray-600 block mb-2">Share link</label>
+            <div class="flex items-center gap-2 bg-gray-100 p-3 rounded-lg">
+              <span class="text-sm flex-1 truncate">{{ meetingLink }}</span>
+              <button 
+                @click="copyMeetingLink"
+                class="text-blue-600 hover:text-blue-700 text-sm font-medium whitespace-nowrap"
+              >
+                Copy link
+              </button>
+            </div>
           </div>
-          <div>
-            <label class="text-sm text-gray-600 block mb-1">Duration</label>
-            <div class="bg-gray-100 p-3 rounded-lg text-sm">{{ meetingDuration }}</div>
+
+          <!-- Meeting Info -->
+          <div class="space-y-3">
+            <div>
+              <label class="text-sm text-gray-600 block mb-1">Your name</label>
+              <div class="bg-gray-100 p-3 rounded-lg text-sm">{{ userName }}</div>
+            </div>
+            <div>
+              <label class="text-sm text-gray-600 block mb-1">Duration</label>
+              <div class="bg-gray-100 p-3 rounded-lg text-sm">{{ meetingDuration }}</div>
+            </div>
+            <div>
+              <label class="text-sm text-gray-600 block mb-1">Participants</label>
+              <div class="bg-gray-100 p-3 rounded-lg text-sm">{{ totalParticipants }}</div>
+            </div>
+          </div>
+
+          <!-- Meeting Controls -->
+          <div class="pt-4 border-t border-gray-200">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">Meeting controls</h3>
+            <div class="space-y-2">
+              <!-- Add People Button -->
+              <button 
+                @click="copyMeetingLink"
+                class="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-left"
+              >
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                <span class="text-sm font-medium text-gray-700">Add people</span>
+              </button>
+
+              <!-- End Meeting Button -->
+              <button 
+                @click="handleLeaveMeeting"
+                class="w-full flex items-center gap-3 px-4 py-3 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-left"
+              >
+                <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span class="text-sm font-medium text-red-700">Leave meeting</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -535,14 +638,17 @@ import { useMediaStream } from '../composables/useMediaStream'
 import { useChat } from '../composables/useChat'
 import { useActiveSpeaker } from '../composables/useActiveSpeaker'
 import { useChatStore } from '../stores/chat'
+import { useToastStore } from '../stores/toast'
 import ChatPanel from '../components/ChatPanel.vue'
 import ParticipantsPanel from '../components/ParticipantsPanel.vue'
 import LayoutSwitcher from '../components/LayoutSwitcher.vue'
 import SettingsPanel from '../components/SettingsPanel.vue'
+import ToastContainer from '../components/ToastContainer.vue'
 
 const router = useRouter()
 const route = useRoute()
 const chatStore = useChatStore()
+const toastStore = useToastStore()
 
 // Refs
 const localVideoRef = ref(null)
@@ -558,6 +664,8 @@ const meetingDuration = ref('00:00')
 const isLocalActive = ref(false)
 const currentLayout = ref('grid')
 const spotlightParticipant = ref(null)
+const screenShareParticipant = ref(null)
+const previousLayout = ref('grid')
 
 // Route params
 const appName = import.meta.env.VITE_APP_NAME || 'Discus'
@@ -627,6 +735,10 @@ const totalParticipants = computed(() => {
 
 const isLocalSpeaking = computed(() => {
   return activeSpeakerId.value === socket.value?.id
+})
+
+const meetingLink = computed(() => {
+  return `${window.location.origin}/meeting/${meetingId.value}`
 })
 
 const getGridClass = computed(() => {
@@ -716,11 +828,21 @@ const setSpotlightParticipant = (participantId) => {
 const copyMeetingId = () => {
   navigator.clipboard.writeText(meetingId.value)
     .then(() => {
-      errorMessage.value = 'Meeting ID copied to clipboard!'
-      setTimeout(() => { errorMessage.value = null }, 2000)
+      toastStore.success('Meeting ID copied to clipboard!')
     })
     .catch(() => {
-      errorMessage.value = 'Failed to copy meeting ID'
+      toastStore.error('Failed to copy meeting ID')
+    })
+}
+
+// Copy meeting link
+const copyMeetingLink = () => {
+  navigator.clipboard.writeText(meetingLink.value)
+    .then(() => {
+      toastStore.success('Meeting link copied! Share it with others to join.')
+    })
+    .catch(() => {
+      toastStore.error('Failed to copy meeting link')
     })
 }
 
@@ -776,7 +898,7 @@ const initializeMeeting = async () => {
       await requestPermissions(initialVideo, initialAudio)
     } catch (permError) {
       console.warn('[Meeting] Media permission error (continuing anyway):', permError.message)
-      errorMessage.value = permError.message
+      toastStore.warning('Media permissions denied. You can still join the meeting.', 5000)
       // Continue without media - user can still join meeting
     }
 
@@ -859,6 +981,7 @@ const initializeMeeting = async () => {
   } catch (error) {
     console.error('[Meeting] Initialization failed:', error)
     errorMessage.value = error.message || 'Failed to join meeting'
+    toastStore.error(error.message || 'Failed to join meeting')
     isLoading.value = false
   }
 }
@@ -869,7 +992,7 @@ const handleSendMessage = async (message) => {
     await sendMessage(message)
   } catch (error) {
     console.error('[Meeting] Failed to send message:', error)
-    errorMessage.value = 'Failed to send message'
+    toastStore.error('Failed to send message. Please try again.')
   }
 }
 
@@ -902,7 +1025,7 @@ const handleToggleAudio = async () => {
     }
   } catch (error) {
     console.error('[Meeting] Failed to toggle audio:', error)
-    errorMessage.value = 'Failed to toggle microphone'
+    toastStore.error('Failed to toggle microphone. Please check permissions.')
   }
 }
 
@@ -920,7 +1043,7 @@ const handleToggleVideo = async () => {
     }
   } catch (error) {
     console.error('[Meeting] Failed to toggle video:', error)
-    errorMessage.value = 'Failed to toggle camera'
+    toastStore.error('Failed to toggle camera. Please check permissions.')
   }
 }
 
@@ -930,17 +1053,37 @@ const handleScreenShare = async () => {
     if (hasScreenShare.value) {
       // Stop screen sharing
       stopScreenShare()
+      screenShareParticipant.value = null
+      
+      // Restore previous layout
+      if (previousLayout.value && previousLayout.value !== currentLayout.value) {
+        currentLayout.value = previousLayout.value
+        console.log('[Meeting] Restored layout to:', previousLayout.value)
+      }
     } else {
       // Start screen sharing
       await startScreenShare()
       const screenTrack = getScreenTrack()
       if (screenTrack) {
         await produce(screenTrack, 'screen')
+        
+        // Mark local user as screen sharer
+        screenShareParticipant.value = socket.value?.id
+        
+        // Auto-switch to spotlight layout for better screen sharing experience
+        if (currentLayout.value !== 'spotlight') {
+          previousLayout.value = currentLayout.value
+          currentLayout.value = 'spotlight'
+          console.log('[Meeting] Auto-switched to spotlight layout for screen sharing')
+        }
+        
+        // Set self as spotlight participant
+        spotlightParticipant.value = socket.value?.id
       }
     }
   } catch (error) {
     console.error('[Meeting] Failed to toggle screen share:', error)
-    errorMessage.value = 'Failed to share screen'
+    toastStore.error('Failed to share screen. Please grant screen sharing permission.')
   }
 }
 
@@ -1056,6 +1199,21 @@ watch(remoteStreams, (streams) => {
     })
   })
 }, { deep: true, immediate: true })
+
+// Watch for participant changes to show notifications
+watch(() => participants.value.size, (newSize, oldSize) => {
+  if (oldSize !== undefined && newSize > oldSize) {
+    // Someone joined
+    const newParticipants = Array.from(participants.value.values())
+    const newParticipant = newParticipants[newParticipants.length - 1]
+    if (newParticipant?.userName) {
+      toastStore.info(`${newParticipant.userName} joined the meeting`, 3000)
+    }
+  } else if (oldSize !== undefined && newSize < oldSize) {
+    // Someone left
+    toastStore.info(`A participant left the meeting`, 3000)
+  }
+})
 
 // Lifecycle hooks
 onMounted(() => {
