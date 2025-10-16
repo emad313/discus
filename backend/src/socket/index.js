@@ -60,6 +60,9 @@ export function setupSocketHandlers(io) {
             id: meetingId,
             router,
             peers: new Map(),
+            hostId: null, // Will be set to first joiner
+            isLocked: false, // Meeting lock status
+            waitingRoom: new Map(), // socketId -> participant waiting
           });
 
           logger.info(`Initialized room: ${meetingId}`);
@@ -67,11 +70,45 @@ export function setupSocketHandlers(io) {
 
         const room = rooms.get(meetingId);
 
+        // Check if meeting is locked
+        if (room.isLocked && room.hostId && room.hostId !== socket.id) {
+          logger.info(`Meeting ${meetingId} is locked. ${socket.id} needs admission.`);
+          
+          // Add to waiting room
+          room.waitingRoom.set(socket.id, {
+            socketId: socket.id,
+            userName,
+            timestamp: Date.now(),
+          });
+          
+          // Notify host about knock
+          io.to(room.hostId).emit('participant-knock', {
+            peerId: socket.id,
+            userName,
+          });
+          
+          callback({
+            success: false,
+            error: 'WAITING_FOR_ADMISSION',
+            message: 'Meeting is locked. Waiting for host to admit you...',
+          });
+          
+          return;
+        }
+
+        // Assign host if this is the first participant
+        if (room.peers.size === 0) {
+          room.hostId = socket.id;
+          logger.info(`${socket.id} (${userName}) is now the host of room ${meetingId}`);
+        }
+
         // Store peer info
+        const isHost = socket.id === room.hostId;
         peers.set(socket.id, {
           socketId: socket.id,
           meetingId,
           userName,
+          isHost,
           transports: new Map(),
           producers: new Map(),
           consumers: new Map(),
@@ -102,6 +139,9 @@ export function setupSocketHandlers(io) {
           success: true,
           rtpCapabilities: room.router.rtpCapabilities,
           peers: existingPeers,
+          isHost: socket.id === room.hostId,
+          hostId: room.hostId,
+          isLocked: room.isLocked,
         });
 
         // Emit participant update to preview rooms
@@ -376,6 +416,302 @@ export function setupSocketHandlers(io) {
 
     // ========== END CHAT EVENTS ==========
 
+    // ========== HOST CONTROL EVENTS ==========
+
+    // Lock/Unlock meeting
+    socket.on('lock-meeting', ({ meetingId }, callback) => {
+      try {
+        const room = rooms.get(meetingId);
+        const peer = peers.get(socket.id);
+
+        if (!room || !peer) {
+          callback({ success: false, error: 'Room or peer not found' });
+          return;
+        }
+
+        // Verify host
+        if (room.hostId !== socket.id) {
+          callback({ success: false, error: 'Only host can lock the meeting' });
+          return;
+        }
+
+        room.isLocked = true;
+        logger.info(`Meeting ${meetingId} locked by host ${socket.id}`);
+
+        // Notify all participants
+        io.to(meetingId).emit('meeting-locked', {
+          isLocked: true,
+          hostId: room.hostId,
+        });
+
+        callback({ success: true, isLocked: true });
+      } catch (error) {
+        logger.error('Error locking meeting:', error);
+        callback({ success: false, error: error.message });
+      }
+    });
+
+    socket.on('unlock-meeting', ({ meetingId }, callback) => {
+      try {
+        const room = rooms.get(meetingId);
+        const peer = peers.get(socket.id);
+
+        if (!room || !peer) {
+          callback({ success: false, error: 'Room or peer not found' });
+          return;
+        }
+
+        // Verify host
+        if (room.hostId !== socket.id) {
+          callback({ success: false, error: 'Only host can unlock the meeting' });
+          return;
+        }
+
+        room.isLocked = false;
+        logger.info(`Meeting ${meetingId} unlocked by host ${socket.id}`);
+
+        // Notify all participants
+        io.to(meetingId).emit('meeting-locked', {
+          isLocked: false,
+          hostId: room.hostId,
+        });
+
+        callback({ success: true, isLocked: false });
+      } catch (error) {
+        logger.error('Error unlocking meeting:', error);
+        callback({ success: false, error: error.message });
+      }
+    });
+
+    // Admit participant from waiting room
+    socket.on('admit-participant', ({ meetingId, peerId }, callback) => {
+      try {
+        const room = rooms.get(meetingId);
+        const peer = peers.get(socket.id);
+
+        if (!room || !peer) {
+          callback({ success: false, error: 'Room or peer not found' });
+          return;
+        }
+
+        // Verify host
+        if (room.hostId !== socket.id) {
+          callback({ success: false, error: 'Only host can admit participants' });
+          return;
+        }
+
+        const waitingPeer = room.waitingRoom.get(peerId);
+        if (!waitingPeer) {
+          callback({ success: false, error: 'Participant not in waiting room' });
+          return;
+        }
+
+        // Remove from waiting room
+        room.waitingRoom.delete(peerId);
+
+        // Notify admitted participant
+        io.to(peerId).emit('admitted-to-meeting', { meetingId });
+
+        logger.info(`Host ${socket.id} admitted ${peerId} to meeting ${meetingId}`);
+
+        callback({ success: true });
+      } catch (error) {
+        logger.error('Error admitting participant:', error);
+        callback({ success: false, error: error.message });
+      }
+    });
+
+    // Reject participant from waiting room
+    socket.on('reject-participant', ({ meetingId, peerId }, callback) => {
+      try {
+        const room = rooms.get(meetingId);
+        const peer = peers.get(socket.id);
+
+        if (!room || !peer) {
+          callback({ success: false, error: 'Room or peer not found' });
+          return;
+        }
+
+        // Verify host
+        if (room.hostId !== socket.id) {
+          callback({ success: false, error: 'Only host can reject participants' });
+          return;
+        }
+
+        const waitingPeer = room.waitingRoom.get(peerId);
+        if (!waitingPeer) {
+          callback({ success: false, error: 'Participant not in waiting room' });
+          return;
+        }
+
+        // Remove from waiting room
+        room.waitingRoom.delete(peerId);
+
+        // Notify rejected participant
+        io.to(peerId).emit('rejected-from-meeting', { 
+          meetingId,
+          message: 'The host has denied your request to join'
+        });
+
+        logger.info(`Host ${socket.id} rejected ${peerId} from meeting ${meetingId}`);
+
+        callback({ success: true });
+      } catch (error) {
+        logger.error('Error rejecting participant:', error);
+        callback({ success: false, error: error.message });
+      }
+    });
+
+    // Kick participant
+    socket.on('kick-participant', ({ meetingId, peerId, reason }, callback) => {
+      try {
+        const room = rooms.get(meetingId);
+        const peer = peers.get(socket.id);
+
+        if (!room || !peer) {
+          callback({ success: false, error: 'Room or peer not found' });
+          return;
+        }
+
+        // Verify host
+        if (room.hostId !== socket.id) {
+          callback({ success: false, error: 'Only host can kick participants' });
+          return;
+        }
+
+        // Can't kick yourself
+        if (peerId === socket.id) {
+          callback({ success: false, error: 'Cannot kick yourself' });
+          return;
+        }
+
+        // Notify kicked participant
+        io.to(peerId).emit('kicked-from-meeting', {
+          meetingId,
+          reason: reason || 'You have been removed from the meeting',
+        });
+
+        logger.info(`Host ${socket.id} kicked ${peerId} from meeting ${meetingId}`);
+
+        callback({ success: true });
+      } catch (error) {
+        logger.error('Error kicking participant:', error);
+        callback({ success: false, error: error.message });
+      }
+    });
+
+    // Mute participant (force mute their microphone)
+    socket.on('mute-participant', ({ meetingId, peerId }, callback) => {
+      try {
+        const room = rooms.get(meetingId);
+        const peer = peers.get(socket.id);
+
+        if (!room || !peer) {
+          callback({ success: false, error: 'Room or peer not found' });
+          return;
+        }
+
+        // Verify host
+        if (room.hostId !== socket.id) {
+          callback({ success: false, error: 'Only host can mute participants' });
+          return;
+        }
+
+        // Notify participant to mute
+        io.to(peerId).emit('force-mute', {
+          meetingId,
+          message: 'The host has muted your microphone',
+        });
+
+        logger.info(`Host ${socket.id} muted ${peerId} in meeting ${meetingId}`);
+
+        callback({ success: true });
+      } catch (error) {
+        logger.error('Error muting participant:', error);
+        callback({ success: false, error: error.message });
+      }
+    });
+
+    // Mute all participants
+    socket.on('mute-all', ({ meetingId }, callback) => {
+      try {
+        const room = rooms.get(meetingId);
+        const peer = peers.get(socket.id);
+
+        if (!room || !peer) {
+          callback({ success: false, error: 'Room or peer not found' });
+          return;
+        }
+
+        // Verify host
+        if (room.hostId !== socket.id) {
+          callback({ success: false, error: 'Only host can mute all participants' });
+          return;
+        }
+
+        // Notify all participants except host to mute
+        socket.to(meetingId).emit('force-mute', {
+          meetingId,
+          message: 'The host has muted all participants',
+        });
+
+        logger.info(`Host ${socket.id} muted all in meeting ${meetingId}`);
+
+        callback({ success: true });
+      } catch (error) {
+        logger.error('Error muting all:', error);
+        callback({ success: false, error: error.message });
+      }
+    });
+
+    // Transfer host role
+    socket.on('transfer-host', ({ meetingId, newHostId }, callback) => {
+      try {
+        const room = rooms.get(meetingId);
+        const peer = peers.get(socket.id);
+
+        if (!room || !peer) {
+          callback({ success: false, error: 'Room or peer not found' });
+          return;
+        }
+
+        // Verify current host
+        if (room.hostId !== socket.id) {
+          callback({ success: false, error: 'Only host can transfer host role' });
+          return;
+        }
+
+        // Verify new host exists
+        if (!room.peers.has(newHostId)) {
+          callback({ success: false, error: 'New host not found in meeting' });
+          return;
+        }
+
+        // Transfer host
+        room.hostId = newHostId;
+        
+        // Update peer objects
+        peers.get(socket.id).isHost = false;
+        peers.get(newHostId).isHost = true;
+
+        // Notify all participants
+        io.to(meetingId).emit('host-changed', {
+          oldHostId: socket.id,
+          newHostId,
+          hostName: room.peers.get(newHostId).userName,
+        });
+
+        logger.info(`Host transferred from ${socket.id} to ${newHostId} in meeting ${meetingId}`);
+
+        callback({ success: true, newHostId });
+      } catch (error) {
+        logger.error('Error transferring host:', error);
+        callback({ success: false, error: error.message });
+      }
+    });
+
+    // ========== END HOST CONTROL EVENTS ==========
+
     // Disconnect
     socket.on('disconnect', () => {
       logger.info(`Client disconnected: ${socket.id}`);
@@ -409,7 +745,32 @@ function handlePeerDisconnect(socket) {
   // Remove peer from room
   const room = rooms.get(meetingId);
   if (room) {
+    const wasHost = room.hostId === socket.id;
+    
     room.peers.delete(socket.id);
+    
+    // If host left and there are other participants, transfer host to next person
+    if (wasHost && room.peers.size > 0) {
+      // Get first remaining peer as new host
+      const newHostId = Array.from(room.peers.keys())[0];
+      room.hostId = newHostId;
+      
+      // Update peer host status
+      const newHostPeer = peers.get(newHostId);
+      if (newHostPeer) {
+        newHostPeer.isHost = true;
+      }
+      
+      // Notify all participants about new host
+      socket.to(meetingId).emit('host-changed', {
+        oldHostId: socket.id,
+        newHostId,
+        hostName: room.peers.get(newHostId)?.userName || 'Unknown',
+        reason: 'Previous host left the meeting',
+      });
+      
+      logger.info(`Host transferred from ${socket.id} to ${newHostId} due to disconnect`);
+    }
     
     // Notify others
     socket.to(meetingId).emit('peer-left', {

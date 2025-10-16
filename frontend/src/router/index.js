@@ -17,12 +17,25 @@ const router = createRouter({
     {
       path: '/meeting/:id',
       name: 'meeting',
-      component: () => import('../views/Meeting.vue')
+      component: () => import('../views/Meeting.vue'),
+      // Navigation guard: Redirect to prejoin if not coming from prejoin
+      beforeEnter: (to, from, next) => {
+        // Allow if coming from prejoin or if query param says to skip (for dev/testing)
+        if (from.name === 'prejoin' || to.query.skipPrejoin === 'true') {
+          next()
+        } else {
+          // Redirect to prejoin with the meeting ID
+          next({ name: 'prejoin', params: { id: to.params.id } })
+        }
+      }
     },
     {
       path: '/join/:id?',
       name: 'join',
-      component: () => import('../views/JoinMeeting.vue')
+      // Redirect /join/:id to /prejoin/:id
+      redirect: to => {
+        return { name: 'prejoin', params: { id: to.params.id } }
+      }
     },
     {
       path: '/:pathMatch(.*)*',
