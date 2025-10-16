@@ -3,6 +3,18 @@
     <!-- Toast Notifications -->
     <ToastContainer />
     
+    <!-- Waiting Room Overlay -->
+    <WaitingRoom
+      v-if="showWaitingRoom"
+      :meeting-id="meetingId"
+      :user-name="userName"
+      :socket="socket"
+      @admitted="handleWaitingRoomAdmitted"
+      @rejected="handleWaitingRoomRejected"
+      @cancel="handleWaitingRoomCancel"
+      @retry="handleWaitingRoomRetry"
+    />
+    
     <!-- Top Bar -->
     <header class="absolute top-0 left-0 right-0 z-20 px-6 py-4 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent">
       <div class="flex items-center gap-4">
@@ -131,6 +143,15 @@
                 <p class="text-white text-lg font-medium">{{ userName }}</p>
               </div>
             </div>
+            
+            <!-- Host Badge (Top Left) -->
+            <div v-if="isHost" class="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-gradient-to-r from-yellow-400 to-orange-500 px-3 py-1.5 rounded-full shadow-lg">
+              <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+              <span class="text-white text-xs font-bold">Host</span>
+            </div>
+            
             <!-- Persistent Name Badge & Status -->
             <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-3">
               <div class="flex items-center justify-between">
@@ -186,6 +207,15 @@
               playsinline
               class="w-full h-full object-cover"
             ></video>
+            
+            <!-- Host Badge (Top Left) -->
+            <div v-if="hostId === participantId" class="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-gradient-to-r from-yellow-400 to-orange-500 px-3 py-1.5 rounded-full shadow-lg">
+              <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+              <span class="text-white text-xs font-bold">Host</span>
+            </div>
+            
             <!-- Persistent Name Badge & Status -->
             <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-3">
               <div class="flex items-center justify-between">
@@ -534,6 +564,24 @@
       />
     </transition>
 
+    <!-- Host Controls Panel (Fixed Position) -->
+    <div v-if="isHost" class="fixed bottom-24 right-6 z-30 max-w-md">
+      <HostControls
+        :is-host="isHost"
+        :is-locked="isLocked"
+        :waiting-participants="waitingParticipants"
+        :participant-count="totalParticipants"
+        :socket="socket"
+        :meeting-id="meetingId"
+        @lock-changed="handleLockChanged"
+        @mute-all="() => {}"
+        @admit-participant="handleAdmitParticipant"
+        @reject-participant="handleRejectParticipant"
+        @admit-all="handleAdmitAll"
+        @end-meeting="handleEndMeeting"
+      />
+    </div>
+
     <!-- Meeting Info Panel -->
     <transition
       enter-active-class="transition duration-300 ease-out"
@@ -644,6 +692,8 @@ import ParticipantsPanel from '../components/ParticipantsPanel.vue'
 import LayoutSwitcher from '../components/LayoutSwitcher.vue'
 import SettingsPanel from '../components/SettingsPanel.vue'
 import ToastContainer from '../components/ToastContainer.vue'
+import HostControls from '../components/HostControls.vue'
+import WaitingRoom from '../components/WaitingRoom.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -666,6 +716,13 @@ const currentLayout = ref('grid')
 const spotlightParticipant = ref(null)
 const screenShareParticipant = ref(null)
 const previousLayout = ref('grid')
+
+// Host Controls refs
+const isHost = ref(false)
+const hostId = ref(null)
+const isLocked = ref(false)
+const waitingParticipants = ref([])
+const showWaitingRoom = ref(false)
 
 // Route params
 const appName = import.meta.env.VITE_APP_NAME || 'Discus'
@@ -943,7 +1000,22 @@ const initializeMeeting = async () => {
 
     // Join room
     console.log('[Meeting] Joining room...', meetingId.value, userName.value)
-    await joinRoom(meetingId.value, userName.value)
+    const joinResponse = await joinRoom(meetingId.value, userName.value)
+    
+    // Check if waiting for admission
+    if (!joinResponse.success && joinResponse.error === 'WAITING_FOR_ADMISSION') {
+      showWaitingRoom.value = true
+      isLoading.value = false
+      return
+    }
+    
+    // Set host status
+    if (joinResponse.isHost !== undefined) {
+      isHost.value = joinResponse.isHost
+      hostId.value = joinResponse.hostId
+      isLocked.value = joinResponse.isLocked
+      console.log('[Meeting] Host status:', isHost.value ? 'YES' : 'NO')
+    }
 
     // Produce video track if enabled
     if (hasVideo.value) {
@@ -1255,6 +1327,117 @@ watch(() => participants.value.size, (newSize, oldSize) => {
   }
 })
 
+// Host Control Handlers
+const handleLockChanged = (locked) => {
+  isLocked.value = locked
+}
+
+const handleAdmitParticipant = (peerId) => {
+  waitingParticipants.value = waitingParticipants.value.filter(p => p.peerId !== peerId)
+}
+
+const handleRejectParticipant = (peerId) => {
+  waitingParticipants.value = waitingParticipants.value.filter(p => p.peerId !== peerId)
+}
+
+const handleAdmitAll = () => {
+  waitingParticipants.value = []
+}
+
+const handleEndMeeting = () => {
+  // Kick all participants
+  for (const [participantId] of participants.value) {
+    socket.value.emit('kick-participant', { 
+      meetingId: meetingId.value, 
+      peerId: participantId, 
+      reason: 'Host ended the meeting for everyone' 
+    })
+  }
+  
+  // Leave meeting after 1 second
+  setTimeout(() => {
+    handleLeaveMeeting()
+  }, 1000)
+}
+
+const handleWaitingRoomAdmitted = (meetingIdFromEvent) => {
+  showWaitingRoom.value = false
+  // Retry initialization
+  initializeMeeting()
+}
+
+const handleWaitingRoomRejected = () => {
+  showWaitingRoom.value = false
+  router.push('/')
+}
+
+const handleWaitingRoomCancel = () => {
+  showWaitingRoom.value = false
+  router.push('/')
+}
+
+const handleWaitingRoomRetry = () => {
+  showWaitingRoom.value = false
+  // Retry join
+  initializeMeeting()
+}
+
+// Setup socket listeners for host controls
+const setupHostControlListeners = () => {
+  if (!socket.value) return
+  
+  // Meeting locked/unlocked
+  socket.value.on('meeting-locked', ({ isLocked: locked, hostId: host }) => {
+    isLocked.value = locked
+    hostId.value = host
+    toastStore.info(locked ? 'Meeting locked by host' : 'Meeting unlocked by host')
+  })
+  
+  // Participant knocking (waiting to join)
+  socket.value.on('participant-knock', ({ peerId, userName: name }) => {
+    waitingParticipants.value.push({ peerId, userName: name })
+    toastStore.info(`${name} wants to join the meeting`, 0) // Don't auto-dismiss
+  })
+  
+  // Force mute
+  socket.value.on('force-mute', ({ message }) => {
+    toastStore.warning(message || 'You have been muted by the host')
+    if (hasAudio.value) {
+      handleToggleAudio()
+    }
+  })
+  
+  // Kicked from meeting
+  socket.value.on('kicked-from-meeting', ({ reason }) => {
+    toastStore.error(reason || 'You have been removed from the meeting')
+    setTimeout(() => {
+      handleLeaveMeeting()
+    }, 2000)
+  })
+  
+  // Host changed
+  socket.value.on('host-changed', ({ newHostId, hostName, reason }) => {
+    hostId.value = newHostId
+    isHost.value = newHostId === socket.value.id
+    
+    if (isHost.value) {
+      toastStore.success(`You are now the host! ${reason || ''}`)
+    } else {
+      toastStore.info(`${hostName} is now the host. ${reason || ''}`)
+    }
+  })
+}
+
+const cleanupHostControlListeners = () => {
+  if (!socket.value) return
+  
+  socket.value.off('meeting-locked')
+  socket.value.off('participant-knock')
+  socket.value.off('force-mute')
+  socket.value.off('kicked-from-meeting')
+  socket.value.off('host-changed')
+}
+
 // Lifecycle hooks
 onMounted(() => {
   initializeMeeting()
@@ -1265,6 +1448,13 @@ onMounted(() => {
   startDetection()
   console.log('[Meeting] Active speaker detection started')
   
+  // Setup host control listeners
+  // Use a small delay to ensure socket is ready
+  setTimeout(() => {
+    setupHostControlListeners()
+    console.log('[Meeting] Host control listeners setup')
+  }, 500)
+  
   // Cleanup on unmount
   onBeforeUnmount(() => {
     clearInterval(timeInterval)
@@ -1274,9 +1464,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   cleanupChatListeners()
   cleanupActiveSpeaker()
+  cleanupHostControlListeners()
   chatStore.clearMessages()
   leaveRoom()
   stopLocalStream()
-  console.log('[Meeting] Cleaned up active speaker detection')
+  console.log('[Meeting] Cleaned up')
 })
 </script>
