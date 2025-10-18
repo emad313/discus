@@ -128,15 +128,15 @@
             ]"
           >
             <video
-              v-if="hasVideo && localStream"
               ref="localVideoRef"
               autoplay
               playsinline
               muted
               class="w-full h-full object-cover transform -scale-x-100"
+              :class="{ 'invisible': !hasVideo || !localStream }"
             ></video>
             <!-- Camera Off Placeholder -->
-            <div v-if="!hasVideo || !localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <div v-show="!hasVideo || !localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="text-center">
                 <div class="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full bg-blue-600 flex items-center justify-center mx-auto mb-3 sm:mb-4">
                   <span class="text-white text-2xl sm:text-3xl md:text-4xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
@@ -204,15 +204,15 @@
             ]"
           >
             <video
-              v-if="participants.get(participantId)?.videoEnabled !== false"
               :ref="el => setRemoteVideoRef(el, participantId)"
               autoplay
               playsinline
               class="w-full h-full object-cover"
+              :class="{ 'invisible': participants.get(participantId)?.videoEnabled === false }"
             ></video>
             
             <!-- Camera Off Placeholder for Remote Participants -->
-            <div v-if="participants.get(participantId)?.videoEnabled === false" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <div v-show="participants.get(participantId)?.videoEnabled === false" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="text-center">
                 <div class="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-3 sm:mb-4">
                   <span class="text-white text-2xl sm:text-3xl md:text-4xl font-bold">
@@ -289,10 +289,11 @@
               autoplay
               playsinline
               class="w-full h-full object-contain"
+              :class="{ 'invisible': !participants.get(spotlightParticipant)?.videoEnabled }"
             ></video>
             
             <!-- Camera Off Placeholder for Remote -->
-            <div v-if="!participants.get(spotlightParticipant)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <div v-show="!participants.get(spotlightParticipant)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="text-center">
                 <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-blue-600 flex items-center justify-center mx-auto mb-4">
                   <span class="text-white text-3xl sm:text-5xl font-bold">
@@ -342,16 +343,16 @@
             :class="{'ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]': isLocalSpeaking}"
           >
             <video 
-              v-if="hasVideo && localStream"
               ref="localVideoRef" 
               autoplay 
               playsinline 
               muted 
               class="w-full h-full object-cover transform -scale-x-100"
+              :class="{ 'invisible': !hasVideo || !localStream }"
             ></video>
             
             <!-- Local Camera Off Placeholder -->
-            <div v-if="!hasVideo || !localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <div v-show="!hasVideo || !localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="text-center">
                 <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-blue-600 flex items-center justify-center mx-auto mb-4">
                   <span class="text-white text-3xl sm:text-5xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
@@ -399,14 +400,14 @@
             :class="{'ring-2 ring-blue-500': !spotlightParticipant}"
           >
             <video 
-              v-if="hasVideo && localStream"
               ref="localVideoThumb1" 
               autoplay 
               playsinline 
               muted 
               class="w-full h-full object-cover transform -scale-x-100"
+              :class="{ 'invisible': !hasVideo || !localStream }"
             ></video>
-            <div v-else class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <div v-show="!hasVideo || !localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <span class="text-white text-lg font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
             </div>
             <div class="absolute bottom-0.5 left-0.5 sm:bottom-1 sm:left-1 text-white text-[10px] sm:text-xs bg-black/60 px-1 sm:px-2 py-0.5 sm:py-1 rounded">You</div>
@@ -421,13 +422,13 @@
             :class="{'ring-2 ring-blue-500': spotlightParticipant === participantId}"
           >
             <video 
-              v-if="participants.get(participantId)?.videoEnabled"
               :ref="el => setRemoteVideoRef(el, participantId + '-thumb')" 
               autoplay 
               playsinline 
               class="w-full h-full object-cover"
+              :class="{ 'invisible': !participants.get(participantId)?.videoEnabled }"
             ></video>
-            <div v-else class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <div v-show="!participants.get(participantId)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <span class="text-white text-lg font-bold">
                 {{ (participants.get(participantId)?.userName || 'Guest').charAt(0).toUpperCase() }}
               </span>
@@ -454,10 +455,11 @@
               autoplay
               playsinline
               class="w-full h-full object-contain"
+              :class="{ 'invisible': !participants.get(spotlightParticipant)?.videoEnabled }"
             ></video>
             
             <!-- Camera Off Placeholder -->
-            <div v-if="!participants.get(spotlightParticipant)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <div v-show="!participants.get(spotlightParticipant)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="text-center">
                 <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-blue-600 flex items-center justify-center mx-auto mb-4">
                   <span class="text-white text-3xl sm:text-5xl font-bold">
@@ -506,16 +508,16 @@
             :class="{'ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]': isLocalSpeaking}"
           >
             <video 
-              v-if="hasVideo && localStream"
               ref="localVideoRef" 
               autoplay 
               playsinline 
               muted 
               class="w-full h-full object-cover transform -scale-x-100"
+              :class="{ 'invisible': !hasVideo || !localStream }"
             ></video>
             
             <!-- Local Camera Off Placeholder -->
-            <div v-if="!hasVideo || !localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <div v-show="!hasVideo || !localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="text-center">
                 <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-blue-600 flex items-center justify-center mx-auto mb-4">
                   <span class="text-white text-3xl sm:text-5xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
@@ -563,14 +565,14 @@
             :class="{'ring-2 ring-blue-500': !spotlightParticipant}"
           >
             <video 
-              v-if="hasVideo && localStream"
               ref="localVideoThumb2" 
               autoplay 
               playsinline 
               muted 
               class="w-full h-full object-cover transform -scale-x-100"
+              :class="{ 'invisible': !hasVideo || !localStream }"
             ></video>
-            <div v-else class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <div v-show="!hasVideo || !localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-600 flex items-center justify-center">
                 <span class="text-white text-lg sm:text-2xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
               </div>
@@ -587,13 +589,13 @@
             :class="{'ring-2 ring-blue-500': spotlightParticipant === participantId}"
           >
             <video 
-              v-if="participants.get(participantId)?.videoEnabled"
               :ref="el => setRemoteVideoRef(el, participantId + '-sidebar')" 
               autoplay 
               playsinline 
               class="w-full h-full object-cover"
+              :class="{ 'invisible': !participants.get(participantId)?.videoEnabled }"
             ></video>
-            <div v-else class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <div v-show="!participants.get(participantId)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-600 flex items-center justify-center">
                 <span class="text-white text-lg sm:text-2xl font-bold">
                   {{ (participants.get(participantId)?.userName || 'Guest').charAt(0).toUpperCase() }}
