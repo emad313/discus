@@ -977,13 +977,24 @@ const initializeMeeting = async () => {
     isLoading.value = true
     errorMessage.value = null
 
+    console.log('[Meeting] Starting initialization...')
+    console.log('[Meeting] User Agent:', navigator.userAgent)
+    console.log('[Meeting] Is HTTPS:', window.location.protocol === 'https:')
+
     // Request media permissions (but don't fail if denied)
     console.log('[Meeting] Requesting permissions...')
     try {
-      await requestPermissions(initialVideo, initialAudio)
+      // Add timeout for permission request (30 seconds)
+      const permissionPromise = requestPermissions(initialVideo, initialAudio)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Permission request timeout')), 30000)
+      )
+      
+      await Promise.race([permissionPromise, timeoutPromise])
+      console.log('[Meeting] Permissions granted successfully')
     } catch (permError) {
       console.warn('[Meeting] Media permission error (continuing anyway):', permError.message)
-      toastStore.warning('Media permissions denied. You can still join the meeting.', 5000)
+      toastStore.warning('Media permissions denied or timed out. You can still join the meeting.', 5000)
       // Continue without media - user can still join meeting
     }
 
@@ -999,6 +1010,7 @@ const initializeMeeting = async () => {
         // Note: Will attach to video element after loading completes
       } catch (streamError) {
         console.warn('[Meeting] Failed to start stream (continuing):', streamError.message)
+        toastStore.info('Could not start camera/microphone. You can enable them later.', 5000)
         // Continue without stream
       }
     } else {
@@ -1009,11 +1021,38 @@ const initializeMeeting = async () => {
     // Use empty string to connect to same origin (nginx will proxy to backend)
     const socketUrl = import.meta.env.VITE_SOCKET_URL || window.location.origin
     console.log('[Meeting] Initializing WebRTC...', socketUrl)
-    await initWebRTC(socketUrl)
+    
+    try {
+      // Add timeout for WebRTC initialization (10 seconds)
+      const initPromise = initWebRTC(socketUrl)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('WebRTC initialization timeout')), 10000)
+      )
+      
+      await Promise.race([initPromise, timeoutPromise])
+      console.log('[Meeting] WebRTC initialized successfully')
+    } catch (initError) {
+      console.error('[Meeting] WebRTC init failed:', initError)
+      throw new Error(`Failed to initialize: ${initError.message}`)
+    }
 
     // Join room
     console.log('[Meeting] Joining room...', meetingId.value, userName.value)
-    const joinResponse = await joinRoom(meetingId.value, userName.value)
+    
+    let joinResponse
+    try {
+      // Add timeout for join room (15 seconds)
+      const joinPromise = joinRoom(meetingId.value, userName.value)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Join room timeout - server not responding')), 15000)
+      )
+      
+      joinResponse = await Promise.race([joinPromise, timeoutPromise])
+      console.log('[Meeting] Successfully joined room')
+    } catch (joinError) {
+      console.error('[Meeting] Join room failed:', joinError)
+      throw new Error(`Failed to join room: ${joinError.message}`)
+    }
     
     // Check if waiting for admission
     if (!joinResponse.success && joinResponse.error === 'WAITING_FOR_ADMISSION') {

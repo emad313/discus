@@ -67,11 +67,19 @@ export function useMediaStream() {
       // Try to get device list first
       await getDevices()
 
+      // Detect if mobile
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+
       // Build constraints based on available devices
       const constraints = {}
       
       if (video && devices.value.cameras.length > 0) {
-        constraints.video = {
+        // Simpler constraints for mobile
+        constraints.video = isMobile ? {
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        } : {
           width: { ideal: 1280 },
           height: { ideal: 720 },
           frameRate: { ideal: 30 },
@@ -81,7 +89,11 @@ export function useMediaStream() {
       }
       
       if (audio && devices.value.microphones.length > 0) {
-        constraints.audio = {
+        // Simpler audio constraints for mobile (many mobile browsers don't support advanced constraints)
+        constraints.audio = isMobile ? {
+          echoCancellation: true,
+          noiseSuppression: true,
+        } : {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
@@ -142,14 +154,24 @@ export function useMediaStream() {
         stopLocalStream()
       }
 
+      // Detect if mobile
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+
       const constraints = {
-        video: enableVideo ? {
+        video: enableVideo ? (isMobile ? {
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        } : {
           deviceId: selectedDevices.value.camera ? { exact: selectedDevices.value.camera } : undefined,
           width: { ideal: 1280 },
           height: { ideal: 720 },
           frameRate: { ideal: 30 },
-        } : false,
-        audio: enableAudio ? {
+        }) : false,
+        audio: enableAudio ? (isMobile ? {
+          echoCancellation: true,
+          noiseSuppression: true,
+        } : {
           deviceId: selectedDevices.value.microphone ? { exact: selectedDevices.value.microphone } : undefined,
           echoCancellation: true,
           noiseSuppression: true,
@@ -157,7 +179,7 @@ export function useMediaStream() {
           sampleRate: 48000,              // High quality 48kHz sampling
           channelCount: 2,                 // Stereo audio
           sampleSize: 16,                  // 16-bit audio depth
-        } : false,
+        }) : false,
       }
 
       localStream.value = await navigator.mediaDevices.getUserMedia(constraints)
