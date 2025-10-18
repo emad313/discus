@@ -9,7 +9,7 @@ const pool = new Pool({
   port: process.env.POSTGRES_PORT || 5432,
   database: process.env.POSTGRES_DB || 'discus',
   user: process.env.POSTGRES_USER || 'discus',
-  password: process.env.POSTGRES_PASSWORD || 'discus',
+  password: process.env.POSTGRES_PASSWORD || 'discus_password_change_in_production',
   max: 20, // Max number of clients in the pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,

@@ -464,18 +464,25 @@ const joinMeeting = async () => {
   isJoining.value = true
   stopPreview()
 
-  // Navigate to meeting with settings
-  router.push({
-    name: 'meeting',
-    params: { id: meetingId.value },
-    query: {
+  // Save settings to localStorage (will persist across refreshes)
+  try {
+    localStorage.setItem('userPreferences', JSON.stringify({
       name: displayName.value.trim(),
-      video: isVideoEnabled.value ? 'true' : 'false',
-      audio: isAudioEnabled.value ? 'true' : 'false',
+      video: isVideoEnabled.value,
+      audio: isAudioEnabled.value,
       cameraId: selectedCameraId.value,
       microphoneId: selectedMicrophoneId.value,
-      speakerId: selectedSpeakerId.value
-    }
+      speakerId: selectedSpeakerId.value,
+      savedAt: Date.now()
+    }))
+  } catch (e) {
+    console.warn('[PreJoin] Failed to save preferences:', e)
+  }
+
+  // Navigate to meeting (settings now in localStorage, not query)
+  router.push({
+    name: 'meeting',
+    params: { id: meetingId.value }
   })
 }
 

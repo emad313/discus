@@ -133,6 +133,7 @@
               playsinline
               muted
               class="w-full h-full object-cover transform -scale-x-100"
+              :class="{ 'hidden': !localStream }"
             ></video>
             <!-- No Stream Placeholder -->
             <div v-if="!localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
@@ -727,9 +728,21 @@ const showWaitingRoom = ref(false)
 // Route params
 const appName = import.meta.env.VITE_APP_NAME || 'Discus'
 const meetingId = ref(route.params.id)
-const userName = ref(route.query.name || 'Guest')
-const initialVideo = route.query.video !== 'false'
-const initialAudio = route.query.audio !== 'false'
+
+// Load user preferences from localStorage (saved in PreJoin)
+let userPreferences = { name: 'Guest', video: true, audio: true }
+try {
+  const saved = localStorage.getItem('userPreferences')
+  if (saved) {
+    userPreferences = JSON.parse(saved)
+  }
+} catch (e) {
+  console.warn('[Meeting] Failed to load preferences:', e)
+}
+
+const userName = ref(userPreferences.name || 'Guest')
+const initialVideo = userPreferences.video !== false
+const initialAudio = userPreferences.audio !== false
 
 // Initialize composables
 const {
@@ -1201,7 +1214,9 @@ const handleLeaveMeeting = async () => {
     // Clear session storage on intentional leave
     try {
       sessionStorage.removeItem('active-meeting')
-      console.log('[Meeting] Session cleared')
+      localStorage.removeItem('userPreferences')
+      chatStore.clearMessages() // Clear chat messages
+      console.log('[Meeting] Session and preferences cleared')
     } catch (e) {
       console.warn('[Meeting] Failed to clear session:', e)
     }
