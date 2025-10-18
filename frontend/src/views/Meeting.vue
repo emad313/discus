@@ -128,20 +128,21 @@
             ]"
           >
             <video
+              v-if="hasVideo && localStream"
               ref="localVideoRef"
               autoplay
               playsinline
               muted
               class="w-full h-full object-cover transform -scale-x-100"
-              :class="{ 'hidden': !localStream }"
             ></video>
-            <!-- No Stream Placeholder -->
-            <div v-if="!localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <!-- Camera Off Placeholder -->
+            <div v-if="!hasVideo || !localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="text-center">
-                <div class="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center mx-auto mb-4">
-                  <span class="text-white text-4xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
+                <div class="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full bg-blue-600 flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                  <span class="text-white text-2xl sm:text-3xl md:text-4xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
                 </div>
-                <p class="text-white text-lg font-medium">{{ userName }}</p>
+                <p class="text-white text-sm sm:text-base md:text-lg font-medium">{{ userName }}</p>
+                <p class="text-gray-400 text-xs sm:text-sm mt-1">Camera is off</p>
               </div>
             </div>
             
@@ -203,11 +204,27 @@
             ]"
           >
             <video
+              v-if="participants.get(participantId)?.videoEnabled !== false"
               :ref="el => setRemoteVideoRef(el, participantId)"
               autoplay
               playsinline
               class="w-full h-full object-cover"
             ></video>
+            
+            <!-- Camera Off Placeholder for Remote Participants -->
+            <div v-if="participants.get(participantId)?.videoEnabled === false" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+              <div class="text-center">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                  <span class="text-white text-2xl sm:text-3xl md:text-4xl font-bold">
+                    {{ (participants.get(participantId)?.userName || `Guest`).charAt(0).toUpperCase() }}
+                  </span>
+                </div>
+                <p class="text-white text-sm sm:text-base md:text-lg font-medium">
+                  {{ participants.get(participantId)?.userName || `Guest ${participantId.slice(0, 6)}` }}
+                </p>
+                <p class="text-gray-400 text-xs sm:text-sm mt-1">Camera is off</p>
+              </div>
+            </div>
             
             <!-- Host Badge (Top Left) -->
             <div v-if="hostId === participantId" class="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-gradient-to-r from-yellow-400 to-orange-500 px-3 py-1.5 rounded-full shadow-lg">
@@ -258,11 +275,12 @@
       </div>
 
       <!-- Spotlight Layout -->
-      <div v-else-if="currentLayout === 'spotlight'" class="w-full h-full flex gap-4">
+      <div v-else-if="currentLayout === 'spotlight'" class="w-full h-full flex flex-col sm:flex-row gap-2 sm:gap-4">
         <!-- Main spotlight video (large) -->
         <div class="flex-1 flex items-center justify-center">
+          <!-- Remote participant in spotlight -->
           <div
-            v-if="spotlightParticipant"
+            v-if="spotlightParticipant && remoteStreams.has(spotlightParticipant)"
             class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl w-full h-full max-h-full"
             :class="{'ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]': activeSpeakerId === spotlightParticipant}"
           >
@@ -272,103 +290,318 @@
               playsinline
               class="w-full h-full object-contain"
             ></video>
+            
+            <!-- Camera Off Placeholder for Remote -->
+            <div v-if="!participants.get(spotlightParticipant)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+              <div class="text-center">
+                <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-blue-600 flex items-center justify-center mx-auto mb-4">
+                  <span class="text-white text-3xl sm:text-5xl font-bold">
+                    {{ (participants.get(spotlightParticipant)?.userName || 'Guest').charAt(0).toUpperCase() }}
+                  </span>
+                </div>
+                <p class="text-white text-base sm:text-lg font-medium">{{ participants.get(spotlightParticipant)?.userName || 'Guest' }}</p>
+                <p class="text-gray-400 text-sm mt-2">Camera is off</p>
+              </div>
+            </div>
+            
+            <!-- Participant Info Overlay -->
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-3 sm:p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-white font-medium text-sm sm:text-base drop-shadow">
+                    {{ participants.get(spotlightParticipant)?.userName || 'Guest' }}
+                  </span>
+                  <div v-if="activeSpeakerId === spotlightParticipant" class="flex items-center gap-0.5">
+                    <div class="w-0.5 h-3 bg-green-400 rounded animate-pulse"></div>
+                    <div class="w-0.5 h-4 bg-green-400 rounded animate-pulse" style="animation-delay: 0.1s"></div>
+                    <div class="w-0.5 h-2 bg-green-400 rounded animate-pulse" style="animation-delay: 0.2s"></div>
+                  </div>
+                </div>
+                <!-- Status Indicators -->
+                <div class="flex items-center gap-2">
+                  <div v-if="!participants.get(spotlightParticipant)?.audioEnabled" class="bg-red-600 p-1.5 rounded shadow-lg" title="Microphone off">
+                    <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                  <div v-if="!participants.get(spotlightParticipant)?.videoEnabled" class="bg-gray-700 p-1.5 rounded shadow-lg" title="Camera off">
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <!-- Local video in spotlight if no remote participants -->
+          
+          <!-- Local video in spotlight if no remote participants or no spotlight selected -->
           <div
             v-else
             class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl w-full max-w-4xl aspect-video"
             :class="{'ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]': isLocalSpeaking}"
           >
-            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
-            <div v-if="!localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
-              <div class="w-32 h-32 rounded-full bg-blue-600 flex items-center justify-center">
-                <span class="text-white text-5xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
+            <video 
+              v-if="hasVideo && localStream"
+              ref="localVideoRef" 
+              autoplay 
+              playsinline 
+              muted 
+              class="w-full h-full object-cover transform -scale-x-100"
+            ></video>
+            
+            <!-- Local Camera Off Placeholder -->
+            <div v-if="!hasVideo || !localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+              <div class="text-center">
+                <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-blue-600 flex items-center justify-center mx-auto mb-4">
+                  <span class="text-white text-3xl sm:text-5xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
+                </div>
+                <p class="text-white text-base sm:text-lg font-medium">{{ userName }} (You)</p>
+                <p class="text-gray-400 text-sm mt-2">Camera is off</p>
+              </div>
+            </div>
+            
+            <!-- Local Info Overlay -->
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-3 sm:p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-white font-medium text-sm sm:text-base drop-shadow">{{ userName }} (You)</span>
+                  <div v-if="hasAudio && isLocalSpeaking" class="flex items-center gap-0.5">
+                    <div class="w-0.5 h-3 bg-green-400 rounded animate-pulse"></div>
+                    <div class="w-0.5 h-4 bg-green-400 rounded animate-pulse" style="animation-delay: 0.1s"></div>
+                    <div class="w-0.5 h-2 bg-green-400 rounded animate-pulse" style="animation-delay: 0.2s"></div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div v-if="!hasAudio" class="bg-red-600 p-1.5 rounded shadow-lg" title="Microphone off">
+                    <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                  <div v-if="!hasVideo" class="bg-gray-700 p-1.5 rounded shadow-lg" title="Camera off">
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                    </svg>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Thumbnail strip (bottom) -->
-        <div class="flex gap-2 flex-wrap content-start max-h-full overflow-y-auto" style="max-width: 160px;">
+        <!-- Thumbnail strip (bottom on mobile, right on desktop) -->
+        <div class="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto overflow-y-hidden sm:overflow-x-hidden content-start max-h-32 sm:max-h-full pb-2 sm:pb-0 sm:w-40">
           <!-- Local thumbnail -->
           <div
             @click="setSpotlightParticipant(null)"
-            class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all w-36 h-24"
+            class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all w-24 h-16 sm:w-36 sm:h-24 flex-shrink-0"
             :class="{'ring-2 ring-blue-500': !spotlightParticipant}"
           >
-            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
-            <div class="absolute bottom-1 left-1 text-white text-xs bg-black/60 px-2 py-1 rounded">You</div>
+            <video 
+              v-if="hasVideo && localStream"
+              ref="localVideoThumb1" 
+              autoplay 
+              playsinline 
+              muted 
+              class="w-full h-full object-cover transform -scale-x-100"
+            ></video>
+            <div v-else class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+              <span class="text-white text-lg font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
+            </div>
+            <div class="absolute bottom-0.5 left-0.5 sm:bottom-1 sm:left-1 text-white text-[10px] sm:text-xs bg-black/60 px-1 sm:px-2 py-0.5 sm:py-1 rounded">You</div>
           </div>
 
           <!-- Remote thumbnails -->
           <div
-            v-for="{ id, stream } in thumbnailParticipants"
-            :key="id"
-            @click="setSpotlightParticipant(id)"
-            class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all w-36 h-24"
-            :class="{'ring-2 ring-blue-500': spotlightParticipant === id}"
+            v-for="[participantId, stream] in remoteStreams"
+            :key="'thumb-' + participantId"
+            @click="setSpotlightParticipant(participantId)"
+            class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all w-24 h-16 sm:w-36 sm:h-24 flex-shrink-0"
+            :class="{'ring-2 ring-blue-500': spotlightParticipant === participantId}"
           >
-            <video :ref="el => setRemoteVideoRef(el, id)" autoplay playsinline class="w-full h-full object-cover"></video>
-            <div class="absolute bottom-1 left-1 text-white text-xs bg-black/60 px-2 py-1 rounded">
-              {{ participants.get(id)?.userName || 'Guest' }}
+            <video 
+              v-if="participants.get(participantId)?.videoEnabled"
+              :ref="el => setRemoteVideoRef(el, participantId + '-thumb')" 
+              autoplay 
+              playsinline 
+              class="w-full h-full object-cover"
+            ></video>
+            <div v-else class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+              <span class="text-white text-lg font-bold">
+                {{ (participants.get(participantId)?.userName || 'Guest').charAt(0).toUpperCase() }}
+              </span>
+            </div>
+            <div class="absolute bottom-0.5 left-0.5 sm:bottom-1 sm:left-1 text-white text-[10px] sm:text-xs bg-black/60 px-1 sm:px-2 py-0.5 sm:py-1 rounded truncate max-w-[90%]">
+              {{ participants.get(participantId)?.userName || 'Guest' }}
             </div>
           </div>
         </div>
       </div>
 
       <!-- Sidebar Layout -->
-      <div v-else-if="currentLayout === 'sidebar'" class="w-full h-full flex gap-4">
+      <div v-else-if="currentLayout === 'sidebar'" class="w-full h-full flex flex-col sm:flex-row gap-2 sm:gap-4">
         <!-- Main video area (large, left side) -->
         <div class="flex-1 flex items-center justify-center">
+          <!-- Remote participant in main area -->
           <div
-            v-if="spotlightParticipant"
+            v-if="spotlightParticipant && remoteStreams.has(spotlightParticipant)"
             class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl w-full h-full"
             :class="{'ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]': activeSpeakerId === spotlightParticipant}"
           >
             <video
-              :ref="el => setRemoteVideoRef(el, spotlightParticipant)"
+              :ref="el => setRemoteVideoRef(el, spotlightParticipant + '-main')"
               autoplay
               playsinline
               class="w-full h-full object-contain"
             ></video>
+            
+            <!-- Camera Off Placeholder -->
+            <div v-if="!participants.get(spotlightParticipant)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+              <div class="text-center">
+                <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-blue-600 flex items-center justify-center mx-auto mb-4">
+                  <span class="text-white text-3xl sm:text-5xl font-bold">
+                    {{ (participants.get(spotlightParticipant)?.userName || 'Guest').charAt(0).toUpperCase() }}
+                  </span>
+                </div>
+                <p class="text-white text-base sm:text-lg font-medium">{{ participants.get(spotlightParticipant)?.userName || 'Guest' }}</p>
+                <p class="text-gray-400 text-sm mt-2">Camera is off</p>
+              </div>
+            </div>
+            
+            <!-- Info Overlay -->
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-3 sm:p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-white font-medium text-sm sm:text-base drop-shadow">
+                    {{ participants.get(spotlightParticipant)?.userName || 'Guest' }}
+                  </span>
+                  <div v-if="activeSpeakerId === spotlightParticipant" class="flex items-center gap-0.5">
+                    <div class="w-0.5 h-3 bg-green-400 rounded animate-pulse"></div>
+                    <div class="w-0.5 h-4 bg-green-400 rounded animate-pulse" style="animation-delay: 0.1s"></div>
+                    <div class="w-0.5 h-2 bg-green-400 rounded animate-pulse" style="animation-delay: 0.2s"></div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div v-if="!participants.get(spotlightParticipant)?.audioEnabled" class="bg-red-600 p-1.5 rounded shadow-lg">
+                    <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                  <div v-if="!participants.get(spotlightParticipant)?.videoEnabled" class="bg-gray-700 p-1.5 rounded shadow-lg">
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+          
+          <!-- Local video in main area if no spotlight -->
           <div
             v-else
             class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl w-full max-w-4xl aspect-video"
             :class="{'ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]': isLocalSpeaking}"
           >
-            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
-            <div v-if="!localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
-              <div class="w-32 h-32 rounded-full bg-blue-600 flex items-center justify-center">
-                <span class="text-white text-5xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
+            <video 
+              v-if="hasVideo && localStream"
+              ref="localVideoRef" 
+              autoplay 
+              playsinline 
+              muted 
+              class="w-full h-full object-cover transform -scale-x-100"
+            ></video>
+            
+            <!-- Local Camera Off Placeholder -->
+            <div v-if="!hasVideo || !localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+              <div class="text-center">
+                <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-blue-600 flex items-center justify-center mx-auto mb-4">
+                  <span class="text-white text-3xl sm:text-5xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
+                </div>
+                <p class="text-white text-base sm:text-lg font-medium">{{ userName }} (You)</p>
+                <p class="text-gray-400 text-sm mt-2">Camera is off</p>
+              </div>
+            </div>
+            
+            <!-- Local Info Overlay -->
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-3 sm:p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-white font-medium text-sm sm:text-base drop-shadow">{{ userName }} (You)</span>
+                  <div v-if="hasAudio && isLocalSpeaking" class="flex items-center gap-0.5">
+                    <div class="w-0.5 h-3 bg-green-400 rounded animate-pulse"></div>
+                    <div class="w-0.5 h-4 bg-green-400 rounded animate-pulse" style="animation-delay: 0.1s"></div>
+                    <div class="w-0.5 h-2 bg-green-400 rounded animate-pulse" style="animation-delay: 0.2s"></div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div v-if="!hasAudio" class="bg-red-600 p-1.5 rounded shadow-lg">
+                    <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                  <div v-if="!hasVideo" class="bg-gray-700 p-1.5 rounded shadow-lg">
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                    </svg>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Sidebar (right side, vertical) -->
-        <div class="flex flex-col gap-3 overflow-y-auto" style="width: 280px;">
+        <!-- Sidebar (right side on desktop, bottom on mobile, vertical) -->
+        <div class="flex sm:flex-col gap-2 sm:gap-3 overflow-x-auto sm:overflow-y-auto overflow-y-hidden sm:overflow-x-hidden max-h-32 sm:max-h-full pb-2 sm:pb-0 w-full sm:w-64 lg:w-72">
           <!-- Local video in sidebar -->
           <div
             @click="setSpotlightParticipant(null)"
-            class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all aspect-video"
+            class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all aspect-video flex-shrink-0 w-32 sm:w-full"
             :class="{'ring-2 ring-blue-500': !spotlightParticipant}"
           >
-            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
-            <div class="absolute bottom-2 left-2 text-white text-sm bg-black/70 px-2 py-1 rounded">You</div>
+            <video 
+              v-if="hasVideo && localStream"
+              ref="localVideoThumb2" 
+              autoplay 
+              playsinline 
+              muted 
+              class="w-full h-full object-cover transform -scale-x-100"
+            ></video>
+            <div v-else class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+              <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-600 flex items-center justify-center">
+                <span class="text-white text-lg sm:text-2xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
+              </div>
+            </div>
+            <div class="absolute bottom-1 sm:bottom-2 left-1 sm:left-2 text-white text-xs sm:text-sm bg-black/70 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded">You</div>
           </div>
 
           <!-- Remote videos in sidebar -->
           <div
-            v-for="{ id, stream } in thumbnailParticipants"
-            :key="id"
-            @click="setSpotlightParticipant(id)"
-            class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all aspect-video"
-            :class="{'ring-2 ring-blue-500': spotlightParticipant === id}"
+            v-for="[participantId, stream] in remoteStreams"
+            :key="'sidebar-' + participantId"
+            @click="setSpotlightParticipant(participantId)"
+            class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all aspect-video flex-shrink-0 w-32 sm:w-full"
+            :class="{'ring-2 ring-blue-500': spotlightParticipant === participantId}"
           >
-            <video :ref="el => setRemoteVideoRef(el, id)" autoplay playsinline class="w-full h-full object-cover"></video>
-            <div class="absolute bottom-2 left-2 text-white text-sm bg-black/70 px-2 py-1 rounded">
-              {{ participants.get(id)?.userName || 'Guest' }}
+            <video 
+              v-if="participants.get(participantId)?.videoEnabled"
+              :ref="el => setRemoteVideoRef(el, participantId + '-sidebar')" 
+              autoplay 
+              playsinline 
+              class="w-full h-full object-cover"
+            ></video>
+            <div v-else class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+              <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-600 flex items-center justify-center">
+                <span class="text-white text-lg sm:text-2xl font-bold">
+                  {{ (participants.get(participantId)?.userName || 'Guest').charAt(0).toUpperCase() }}
+                </span>
+              </div>
+            </div>
+            <div class="absolute bottom-1 sm:bottom-2 left-1 sm:left-2 text-white text-xs sm:text-sm bg-black/70 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate max-w-[calc(100%-1rem)]">
+              {{ participants.get(participantId)?.userName || 'Guest' }}
             </div>
           </div>
         </div>
