@@ -132,7 +132,7 @@
               autoplay
               playsinline
               muted
-              class="w-full h-full object-cover"
+              class="w-full h-full object-cover transform -scale-x-100"
             ></video>
             <!-- No Stream Placeholder -->
             <div v-if="!localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
@@ -278,7 +278,7 @@
             class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl w-full max-w-4xl aspect-video"
             :class="{'ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]': isLocalSpeaking}"
           >
-            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover"></video>
+            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
             <div v-if="!localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="w-32 h-32 rounded-full bg-blue-600 flex items-center justify-center">
                 <span class="text-white text-5xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
@@ -295,7 +295,7 @@
             class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all w-36 h-24"
             :class="{'ring-2 ring-blue-500': !spotlightParticipant}"
           >
-            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover"></video>
+            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
             <div class="absolute bottom-1 left-1 text-white text-xs bg-black/60 px-2 py-1 rounded">You</div>
           </div>
 
@@ -336,7 +336,7 @@
             class="relative bg-[#3C4043] rounded-xl overflow-hidden shadow-2xl w-full max-w-4xl aspect-video"
             :class="{'ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]': isLocalSpeaking}"
           >
-            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover"></video>
+            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
             <div v-if="!localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="w-32 h-32 rounded-full bg-blue-600 flex items-center justify-center">
                 <span class="text-white text-5xl font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
@@ -353,7 +353,7 @@
             class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all aspect-video"
             :class="{'ring-2 ring-blue-500': !spotlightParticipant}"
           >
-            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover"></video>
+            <video ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
             <div class="absolute bottom-2 left-2 text-white text-sm bg-black/70 px-2 py-1 rounded">You</div>
           </div>
 

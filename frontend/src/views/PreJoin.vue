@@ -17,7 +17,7 @@
               autoplay
               playsinline
               muted
-              class="w-full h-full object-cover"
+              class="w-full h-full object-cover transform -scale-x-100"
               :class="{ 'hidden': !isVideoEnabled }"
             ></video>
             
