@@ -16,36 +16,36 @@
     />
     
     <!-- Top Bar -->
-    <header class="absolute top-0 left-0 right-0 z-20 px-6 py-4 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent">
-      <div class="flex items-center gap-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm">
-            <span class="text-white text-lg font-bold">D</span>
+    <header class="absolute top-0 left-0 right-0 z-20 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent">
+      <div class="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm flex-shrink-0">
+            <span class="text-white text-base sm:text-lg font-bold">D</span>
           </div>
-          <div>
-            <div class="text-white font-medium text-base">{{ meetingId }}</div>
-            <div class="text-gray-300 text-xs flex items-center gap-2">
+          <div class="min-w-0 flex-1">
+            <div class="text-white font-medium text-sm sm:text-base truncate">{{ meetingId }}</div>
+            <div class="text-gray-300 text-[10px] sm:text-xs flex items-center gap-1 sm:gap-2">
               <span class="flex items-center gap-1">
-                <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                {{ currentTime }}
+                <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500"></span>
+                <span class="hidden sm:inline">{{ currentTime }}</span>
               </span>
-              <span>|</span>
-              <span>{{ totalParticipants }} {{ totalParticipants === 1 ? 'participant' : 'participants' }}</span>
+              <span class="hidden sm:inline">|</span>
+              <span class="truncate">{{ totalParticipants }} {{ totalParticipants === 1 ? 'participant' : 'participants' }}</span>
             </div>
           </div>
         </div>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
         <!-- Layout Switcher -->
         <LayoutSwitcher @layout-change="handleLayoutChange" />
         
         <!-- Meeting Info Button -->
         <button
           @click="showMeetingInfo = !showMeetingInfo"
-          class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all text-white text-sm font-medium"
+          class="px-2 sm:px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all text-white text-sm font-medium"
           title="Meeting details"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
@@ -61,13 +61,13 @@
       leave-from-class="transform translate-y-0 opacity-100"
       leave-to-class="transform translate-y-2 opacity-0"
     >
-      <div v-if="errorMessage" class="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl flex items-center gap-3 max-w-md">
-        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div v-if="errorMessage" class="absolute top-16 sm:top-20 left-2 right-2 sm:left-1/2 sm:right-auto sm:transform sm:-translate-x-1/2 z-50 bg-red-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg shadow-2xl flex items-center gap-2 sm:gap-3 max-w-md mx-auto sm:mx-0">
+        <svg class="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span class="text-sm">{{ errorMessage }}</span>
+        <span class="text-xs sm:text-sm flex-1">{{ errorMessage }}</span>
         <button @click="errorMessage = null" class="ml-2 hover:bg-red-700 p-1 rounded">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
@@ -83,16 +83,16 @@
       leave-from-class="transform translate-y-0 opacity-100"
       leave-to-class="transform -translate-y-full opacity-0"
     >
-      <div v-if="hasScreenShare" class="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-2xl flex items-center gap-3">
-        <svg class="w-5 h-5 flex-shrink-0 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div v-if="hasScreenShare" class="absolute top-16 sm:top-20 left-2 right-2 sm:left-1/2 sm:right-auto sm:transform sm:-translate-x-1/2 z-50 bg-blue-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg shadow-2xl flex items-center gap-2 sm:gap-3 mx-auto sm:mx-0 max-w-md">
+        <svg class="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
-        <span class="text-sm font-medium">You are sharing your screen</span>
+        <span class="text-xs sm:text-sm font-medium flex-1">You are sharing your screen</span>
         <button
           @click="handleScreenShare"
-          class="ml-2 bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-sm font-medium transition-colors"
+          class="bg-white/20 hover:bg-white/30 px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"
         >
-          Stop sharing
+          Stop
         </button>
       </div>
     </transition>
@@ -110,7 +110,7 @@
     </div>
 
     <!-- Main Content -->
-    <main v-else class="flex-1 flex items-center justify-center p-6 pt-24 pb-32">
+    <main v-else class="flex-1 flex items-center justify-center p-2 sm:p-4 md:p-6 pt-16 sm:pt-20 md:pt-24 pb-24 sm:pb-28 md:pb-32">
       <!-- Grid Layout -->
       <div v-if="currentLayout === 'grid'" class="w-full h-full max-w-[1800px]">
         <div 
@@ -376,34 +376,34 @@
     </main>
 
     <!-- Bottom Control Bar -->
-    <footer class="absolute bottom-0 left-0 right-0 z-20 pb-8">
-      <div class="max-w-2xl mx-auto px-6">
-        <div class="bg-[#3C4043] rounded-full shadow-2xl px-6 py-4 backdrop-blur-xl">
-          <div class="flex items-center justify-between gap-2">
+    <footer class="absolute bottom-0 left-0 right-0 z-20 pb-4 sm:pb-6 md:pb-8 px-2 sm:px-4">
+      <div class="max-w-2xl mx-auto">
+        <div class="bg-[#3C4043] rounded-full shadow-2xl px-3 sm:px-4 md:px-6 py-3 sm:py-3.5 md:py-4 backdrop-blur-xl">
+          <div class="flex items-center justify-between gap-1 sm:gap-2">
             <!-- Left Controls -->
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1 sm:gap-2">
               <!-- Meeting Time -->
-              <div class="px-3 py-2 text-white text-sm font-medium">
+              <div class="hidden sm:block px-2 md:px-3 py-2 text-white text-xs sm:text-sm font-medium">
                 {{ meetingDuration }}
               </div>
             </div>
 
             <!-- Center Controls -->
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1 sm:gap-2 md:gap-3">
               <!-- Microphone -->
               <button
                 @click="handleToggleAudio"
                 :class="[
-                  'p-4 rounded-full transition-all duration-200 transform hover:scale-110',
+                  'p-2 sm:p-3 md:p-4 rounded-full transition-all duration-200 transform hover:scale-110',
                   hasAudio ? 'bg-[#5F6368] hover:bg-[#6F7378]' : 'bg-red-600 hover:bg-red-700'
                 ]"
                 :disabled="isLoading"
                 :title="hasAudio ? 'Turn off microphone' : 'Turn on microphone'"
               >
-                <svg v-if="hasAudio" class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <svg v-if="hasAudio" class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd" />
                 </svg>
-                <svg v-else class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <svg v-else class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
                 </svg>
               </button>
@@ -412,45 +412,45 @@
               <button
                 @click="handleToggleVideo"
                 :class="[
-                  'p-4 rounded-full transition-all duration-200 transform hover:scale-110',
+                  'p-2 sm:p-3 md:p-4 rounded-full transition-all duration-200 transform hover:scale-110',
                   hasVideo ? 'bg-[#5F6368] hover:bg-[#6F7378]' : 'bg-red-600 hover:bg-red-700'
                 ]"
                 :disabled="isLoading"
                 :title="hasVideo ? 'Turn off camera' : 'Turn on camera'"
               >
-                <svg v-if="hasVideo" class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="hasVideo" class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
-                <svg v-else class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-else class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                 </svg>
               </button>
 
-              <!-- Screen Share -->
+              <!-- Screen Share (Hidden on small screens) -->
               <button
                 @click="handleScreenShare"
                 :class="[
-                  'p-4 rounded-full transition-all duration-200 transform hover:scale-110',
+                  'hidden sm:flex p-2 sm:p-3 md:p-4 rounded-full transition-all duration-200 transform hover:scale-110',
                   hasScreenShare ? 'bg-blue-600 hover:bg-blue-700' : 'bg-[#5F6368] hover:bg-[#6F7378]'
                 ]"
                 :disabled="isLoading"
                 :title="hasScreenShare ? 'Stop sharing' : 'Share screen'"
               >
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </button>
 
-              <!-- Settings -->
+              <!-- Settings (Hidden on small screens) -->
               <button
                 @click="showSettings = !showSettings"
                 :class="[
-                  'p-4 rounded-full transition-all duration-200 transform hover:scale-110',
+                  'hidden md:flex p-2 sm:p-3 md:p-4 rounded-full transition-all duration-200 transform hover:scale-110',
                   showSettings ? 'bg-blue-600 hover:bg-blue-700' : 'bg-[#5F6368] hover:bg-[#6F7378]'
                 ]"
                 title="Settings"
               >
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
@@ -459,31 +459,31 @@
               <!-- Leave Meeting -->
               <button
                 @click="handleLeaveMeeting"
-                class="p-4 px-8 bg-red-600 hover:bg-red-700 rounded-full transition-all duration-200 transform hover:scale-110 shadow-lg"
+                class="p-2 px-4 sm:p-3 sm:px-6 md:p-4 md:px-8 bg-red-600 hover:bg-red-700 rounded-full transition-all duration-200 transform hover:scale-110 shadow-lg"
                 :disabled="isLoading"
                 title="Leave meeting"
               >
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
             <!-- Right Controls -->
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1 sm:gap-2">
               <!-- Chat -->
               <button
                 @click="chatStore.toggleChat()"
-                class="relative p-3 rounded-full bg-[#5F6368] hover:bg-[#6F7378] transition-all"
+                class="relative p-2 sm:p-2.5 md:p-3 rounded-full bg-[#5F6368] hover:bg-[#6F7378] transition-all"
                 title="Toggle chat"
               >
-                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
                 <!-- Unread Badge -->
                 <span
                   v-if="chatStore.unreadCount > 0"
-                  class="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                  class="absolute -top-0.5 sm:-top-1 -right-0.5 sm:-right-1 bg-red-600 text-white text-[10px] sm:text-xs font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center"
                 >
                   {{ chatStore.unreadCount > 9 ? '9+' : chatStore.unreadCount }}
                 </span>
@@ -492,11 +492,11 @@
               <!-- Participants -->
               <button
                 @click="showParticipants = !showParticipants"
-                class="p-3 rounded-full bg-[#5F6368] hover:bg-[#6F7378] transition-all"
+                class="p-2 sm:p-2.5 md:p-3 rounded-full bg-[#5F6368] hover:bg-[#6F7378] transition-all"
                 :class="{ 'bg-blue-600 hover:bg-blue-700': showParticipants }"
                 title="Show participants"
               >
-                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </button>
@@ -566,7 +566,7 @@
     </transition>
 
     <!-- Host Controls Panel (Fixed Position) -->
-    <div v-if="isHost" class="fixed bottom-24 right-6 z-30 max-w-md">
+    <div v-if="isHost" class="fixed bottom-20 sm:bottom-24 right-2 sm:right-6 z-30 max-w-[calc(100vw-1rem)] sm:max-w-md">
       <HostControls
         :is-host="isHost"
         :is-locked="isLocked"
@@ -592,24 +592,24 @@
       leave-from-class="transform translate-x-0"
       leave-to-class="transform translate-x-full"
     >
-      <div v-if="showMeetingInfo" class="absolute top-0 right-0 bottom-0 w-96 bg-white shadow-2xl z-30 p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-semibold">Meeting details</h2>
+      <div v-if="showMeetingInfo" class="absolute top-0 right-0 bottom-0 w-full sm:w-96 bg-white shadow-2xl z-30 p-4 sm:p-6">
+        <div class="flex items-center justify-between mb-4 sm:mb-6">
+          <h2 class="text-lg sm:text-xl font-semibold">Meeting details</h2>
           <button @click="showMeetingInfo = false" class="p-2 hover:bg-gray-100 rounded-full">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <div class="space-y-6">
+        <div class="space-y-4 sm:space-y-6">
           <!-- Meeting ID Section -->
           <div>
-            <label class="text-sm text-gray-600 block mb-2">Meeting ID</label>
-            <div class="flex items-center gap-2 bg-gray-100 p-3 rounded-lg">
-              <span class="text-sm font-mono flex-1">{{ meetingId }}</span>
+            <label class="text-xs sm:text-sm text-gray-600 block mb-2">Meeting ID</label>
+            <div class="flex items-center gap-2 bg-gray-100 p-2.5 sm:p-3 rounded-lg">
+              <span class="text-xs sm:text-sm font-mono flex-1 truncate">{{ meetingId }}</span>
               <button 
                 @click="copyMeetingId"
-                class="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                class="text-blue-600 hover:text-blue-700 text-xs sm:text-sm font-medium whitespace-nowrap"
               >
                 Copy
               </button>
@@ -618,12 +618,12 @@
 
           <!-- Meeting Link Section -->
           <div>
-            <label class="text-sm text-gray-600 block mb-2">Share link</label>
-            <div class="flex items-center gap-2 bg-gray-100 p-3 rounded-lg">
-              <span class="text-sm flex-1 truncate">{{ meetingLink }}</span>
+            <label class="text-xs sm:text-sm text-gray-600 block mb-2">Share link</label>
+            <div class="flex items-center gap-2 bg-gray-100 p-2.5 sm:p-3 rounded-lg">
+              <span class="text-xs sm:text-sm flex-1 truncate">{{ meetingLink }}</span>
               <button 
                 @click="copyMeetingLink"
-                class="text-blue-600 hover:text-blue-700 text-sm font-medium whitespace-nowrap"
+                class="text-blue-600 hover:text-blue-700 text-xs sm:text-sm font-medium whitespace-nowrap"
               >
                 Copy link
               </button>
@@ -631,23 +631,23 @@
           </div>
 
           <!-- Meeting Info -->
-          <div class="space-y-3">
+          <div class="space-y-2 sm:space-y-3">
             <div>
-              <label class="text-sm text-gray-600 block mb-1">Your name</label>
-              <div class="bg-gray-100 p-3 rounded-lg text-sm">{{ userName }}</div>
+              <label class="text-xs sm:text-sm text-gray-600 block mb-1">Your name</label>
+              <div class="bg-gray-100 p-2.5 sm:p-3 rounded-lg text-xs sm:text-sm">{{ userName }}</div>
             </div>
             <div>
-              <label class="text-sm text-gray-600 block mb-1">Duration</label>
-              <div class="bg-gray-100 p-3 rounded-lg text-sm">{{ meetingDuration }}</div>
+              <label class="text-xs sm:text-sm text-gray-600 block mb-1">Duration</label>
+              <div class="bg-gray-100 p-2.5 sm:p-3 rounded-lg text-xs sm:text-sm">{{ meetingDuration }}</div>
             </div>
             <div>
-              <label class="text-sm text-gray-600 block mb-1">Participants</label>
-              <div class="bg-gray-100 p-3 rounded-lg text-sm">{{ totalParticipants }}</div>
+              <label class="text-xs sm:text-sm text-gray-600 block mb-1">Participants</label>
+              <div class="bg-gray-100 p-2.5 sm:p-3 rounded-lg text-xs sm:text-sm">{{ totalParticipants }}</div>
             </div>
           </div>
 
           <!-- Meeting Controls -->
-          <div class="pt-4 border-t border-gray-200">
+          <div class="pt-3 sm:pt-4 border-t border-gray-200">
             <h3 class="text-sm font-semibold text-gray-700 mb-3">Meeting controls</h3>
             <div class="space-y-2">
               <!-- Add People Button -->
