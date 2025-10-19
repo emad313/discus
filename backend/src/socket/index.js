@@ -147,9 +147,10 @@ export function setupSocketHandlers(io) {
           .map(([id, peer]) => ({
             peerId: id,
             userName: peer.userName,
-            producers: Array.from(peer.producers.entries()).map(([producerId, producer]) => ({
+            producers: Array.from(peer.producers.entries()).map(([producerId, producerData]) => ({
               id: producerId,
-              kind: producer.kind,
+              kind: producerData.kind || producerData.producer?.kind,
+              producerType: producerData.type || producerData.kind, // Include type
             })),
           }));
 
@@ -265,8 +266,8 @@ export function setupSocketHandlers(io) {
       }
     });
 
-    // Produce media (audio/video)
-    socket.on('produce', async ({ transportId, kind, rtpParameters }, callback) => {
+    // Produce media (audio/video/screen)
+    socket.on('produce', async ({ transportId, kind, rtpParameters, appData }, callback) => {
       try {
         const peer = peers.get(socket.id);
         const transportData = peer.transports.get(transportId);
@@ -278,15 +279,23 @@ export function setupSocketHandlers(io) {
         const producer = await transportData.transport.produce({
           kind,
           rtpParameters,
+          appData: appData || {}, // Pass through appData to track producer type
         });
 
-        peer.producers.set(producer.id, producer);
+        // Store producer with its type (video, audio, or screen)
+        const producerType = appData?.producerType || kind;
+        peer.producers.set(producer.id, { 
+          producer, 
+          kind, 
+          type: producerType 
+        });
 
         // Notify other peers about the new producer
         socket.to(peer.meetingId).emit('new-producer', {
           peerId: socket.id,
           producerId: producer.id,
           kind,
+          producerType, // Include type so consumers know if it's screen or camera
         });
 
         callback({
@@ -294,7 +303,7 @@ export function setupSocketHandlers(io) {
           id: producer.id,
         });
 
-        logger.info(`Peer ${socket.id} producing ${kind}, producer ID: ${producer.id}`);
+        logger.info(`Peer ${socket.id} producing ${producerType} (${kind}), producer ID: ${producer.id}`);
 
       } catch (error) {
         logger.error('Error producing media:', error);
@@ -324,10 +333,13 @@ export function setupSocketHandlers(io) {
         // Find the producer
         let producer = null;
         let producerPeer = null;
+        let producerType = null;
         
         for (const [peerId, peerData] of room.peers.entries()) {
           if (peerData.producers.has(producerId)) {
-            producer = peerData.producers.get(producerId);
+            const producerData = peerData.producers.get(producerId);
+            producer = producerData.producer || producerData; // Support both old and new format
+            producerType = producerData.type || producerData.kind;
             producerPeer = peerData;
             break;
           }
@@ -357,9 +369,10 @@ export function setupSocketHandlers(io) {
           producerId: producer.id,
           kind: consumer.kind,
           rtpParameters: consumer.rtpParameters,
+          producerType, // Include producer type in response
         });
 
-        logger.info(`Peer ${socket.id} consuming ${consumer.kind} from producer ${producerId}`);
+        logger.info(`Peer ${socket.id} consuming ${producerType || consumer.kind} from producer ${producerId}`);
 
       } catch (error) {
         logger.error('Error consuming media:', error);
@@ -778,7 +791,8 @@ function handlePeerDisconnect(socket) {
   const { meetingId, userName } = peer;
 
   // Close all producers
-  peer.producers.forEach((producer) => {
+  peer.producers.forEach((producerData) => {
+    const producer = producerData.producer || producerData;
     producer.close();
   });
 

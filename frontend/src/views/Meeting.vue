@@ -940,6 +940,7 @@ const toastStore = useToastStore()
 const localVideoRef = ref(null)
 const localVideoThumb1 = ref(null) // Spotlight thumbnail
 const localVideoThumb2 = ref(null) // Sidebar thumbnail
+const screenShareVideoRef = ref(null) // For displaying screen shares
 const remoteVideoRefs = new Map()
 const isLoading = ref(true)
 const errorMessage = ref(null)
@@ -989,6 +990,7 @@ const {
   consumePendingProducers,
   leaveRoom,
   remoteStreams,
+  screenStreams,
   isConnected,
   participants,
   socket,
@@ -996,6 +998,7 @@ const {
 
 const {
   localStream,
+  screenStream,
   videoEnabled,
   audioEnabled,
   screenShareEnabled,
@@ -1093,6 +1096,45 @@ const getGridClass = computed(() => {
   
   // 26+ users: Dense 6-column grid
   return 'grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1'
+})
+
+// Check if someone is sharing screen
+const screenSharingUser = computed(() => {
+  // Check if local user is sharing
+  if (hasScreenShare.value && socket.value?.id) {
+    return socket.value.id
+  }
+  // Check if any remote user is sharing
+  if (screenStreams.value.size > 0) {
+    return Array.from(screenStreams.value.keys())[0]
+  }
+  return null
+})
+
+// Get screen share stream
+const activeScreenShare = computed(() => {
+  if (!screenSharingUser.value) return null
+  
+  // If local user is sharing, return screen stream from useMediaStream
+  if (screenSharingUser.value === socket.value?.id && hasScreenShare.value) {
+    return {
+      userId: socket.value.id,
+      stream: screenStream.value,
+      isLocal: true
+    }
+  }
+  
+  // If remote user is sharing, get from screenStreams
+  const stream = screenStreams.value.get(screenSharingUser.value)
+  if (stream) {
+    return {
+      userId: screenSharingUser.value,
+      stream,
+      isLocal: false
+    }
+  }
+  
+  return null
 })
 
 // Get participants for spotlight mode (all except the spotlighted one)
@@ -1474,7 +1516,7 @@ const handleScreenShare = async () => {
       await startScreenShare()
       const screenTrack = getScreenTrack()
       if (screenTrack) {
-        await produce(screenTrack, 'screen')
+        await produce(screenTrack, 'video', 'screen')  // Pass 'screen' as producerType
         
         // Mark local user as screen sharer
         screenShareParticipant.value = socket.value?.id
@@ -1655,6 +1697,23 @@ watch(remoteStreams, (streams) => {
     })
   })
 }, { deep: true, immediate: true })
+
+// Watch for screen share and attach to video element
+watch(activeScreenShare, (shareData) => {
+  nextTick(() => {
+    if (screenShareVideoRef.value && shareData?.stream) {
+      console.log('[Meeting] Attaching screen share stream:', shareData.isLocal ? 'local' : 'remote')
+      screenShareVideoRef.value.srcObject = shareData.stream
+      screenShareVideoRef.value.play()
+        .then(() => console.log('[Meeting] ✅ Screen share playing'))
+        .catch(e => console.error('[Meeting] ❌ Screen share play error:', e))
+    } else if (screenShareVideoRef.value && !shareData) {
+      // Clear screen share when stopped
+      screenShareVideoRef.value.srcObject = null
+      console.log('[Meeting] Screen share stopped')
+    }
+  })
+}, { immediate: true })
 
 // Watch for participant changes to show notifications
 watch(() => participants.value.size, (newSize, oldSize) => {
