@@ -938,6 +938,8 @@ const toastStore = useToastStore()
 
 // Refs
 const localVideoRef = ref(null)
+const localVideoThumb1 = ref(null) // Spotlight thumbnail
+const localVideoThumb2 = ref(null) // Sidebar thumbnail
 const remoteVideoRefs = new Map()
 const isLoading = ref(true)
 const errorMessage = ref(null)
@@ -1373,6 +1375,18 @@ const initializeMeeting = async () => {
       localVideoRef.value.srcObject = localStream.value
       await localVideoRef.value.play().catch(e => console.log('[Meeting] Post-init play error:', e.message))
     }
+    
+    // Also attach to thumbnails if they exist (for spotlight/sidebar layouts)
+    if (localVideoThumb1.value && localStream.value) {
+      console.log('[Meeting] Post-init: Attaching stream to spotlight thumbnail')
+      localVideoThumb1.value.srcObject = localStream.value
+      localVideoThumb1.value.play().catch(e => console.log('[Meeting] Spotlight thumb init error:', e.message))
+    }
+    if (localVideoThumb2.value && localStream.value) {
+      console.log('[Meeting] Post-init: Attaching stream to sidebar thumbnail')
+      localVideoThumb2.value.srcObject = localStream.value
+      localVideoThumb2.value.play().catch(e => console.log('[Meeting] Sidebar thumb init error:', e.message))
+    }
   } catch (error) {
     console.error('[Meeting] Initialization failed:', error)
     errorMessage.value = error.message || 'Failed to join meeting'
@@ -1535,6 +1549,18 @@ watch(localStream, (stream) => {
         hasStream: !!stream
       })
     }
+    
+    // Also attach to thumbnails
+    if (localVideoThumb1.value && stream) {
+      console.log('[Meeting] Watch: Attaching local stream to spotlight thumbnail')
+      localVideoThumb1.value.srcObject = stream
+      localVideoThumb1.value.play().catch(e => console.log('[Meeting] Spotlight thumb watch error:', e.message))
+    }
+    if (localVideoThumb2.value && stream) {
+      console.log('[Meeting] Watch: Attaching local stream to sidebar thumbnail')
+      localVideoThumb2.value.srcObject = stream
+      localVideoThumb2.value.play().catch(e => console.log('[Meeting] Sidebar thumb watch error:', e.message))
+    }
   })
 }, { immediate: true })
 
@@ -1651,11 +1677,25 @@ watch(currentLayout, () => {
     nextTick(() => {
       console.log('[Meeting] Layout changed, re-attaching streams...')
       
-      // Re-attach local stream
+      // Re-attach local stream to main video
       if (localVideoRef.value && localStream.value && localVideoRef.value.srcObject !== localStream.value) {
-        console.log('[Meeting] Re-attaching local stream after layout change')
+        console.log('[Meeting] Re-attaching local stream to main video')
         localVideoRef.value.srcObject = localStream.value
         localVideoRef.value.play().catch(e => console.log('[Meeting] Local play error:', e.message))
+      }
+      
+      // Re-attach local stream to spotlight thumbnail
+      if (localVideoThumb1.value && localStream.value && localVideoThumb1.value.srcObject !== localStream.value) {
+        console.log('[Meeting] Re-attaching local stream to spotlight thumbnail')
+        localVideoThumb1.value.srcObject = localStream.value
+        localVideoThumb1.value.play().catch(e => console.log('[Meeting] Spotlight thumb play error:', e.message))
+      }
+      
+      // Re-attach local stream to sidebar thumbnail
+      if (localVideoThumb2.value && localStream.value && localVideoThumb2.value.srcObject !== localStream.value) {
+        console.log('[Meeting] Re-attaching local stream to sidebar thumbnail')
+        localVideoThumb2.value.srcObject = localStream.value
+        localVideoThumb2.value.play().catch(e => console.log('[Meeting] Sidebar thumb play error:', e.message))
       }
       
       // Re-attach all remote streams by checking ALL ref keys in the map
