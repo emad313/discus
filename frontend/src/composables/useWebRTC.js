@@ -538,11 +538,11 @@ export function useWebRTC() {
     const pending = [...window._pendingConsumers]
     window._pendingConsumers = []
     
-    for (const { producerId, peerId, kind } of pending) {
+    for (const { producerId, peerId, kind, producerType } of pending) {
       try {
-        console.log('[WebRTC] Consuming existing', kind, 'from peer', peerId)
-        await consume(producerId, peerId)
-        console.log('[WebRTC] ✅ Successfully consumed', kind, 'from peer', peerId)
+        console.log('[WebRTC] Consuming existing', producerType || kind, 'from peer', peerId)
+        await consume(producerId, peerId, producerType || kind)
+        console.log('[WebRTC] ✅ Successfully consumed', producerType || kind, 'from peer', peerId)
       } catch (error) {
         console.error('[WebRTC] Failed to consume pending producer:', error)
       }
@@ -554,7 +554,8 @@ export function useWebRTC() {
    */
   const leaveRoom = () => {
     // Close all producers
-    producers.value.forEach((producer) => {
+    producers.value.forEach((producerData) => {
+      const producer = producerData.producer || producerData
       producer.close()
     })
     producers.value.clear()

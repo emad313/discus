@@ -208,19 +208,19 @@
               autoplay
               playsinline
               class="w-full h-full object-cover"
-              :class="{ 'invisible': participants.get(participantId)?.videoEnabled === false }"
+              :class="{ 'invisible': enrichedParticipants.get(participantId)?.videoEnabled === false }"
             ></video>
             
             <!-- Camera Off Placeholder for Remote Participants -->
-            <div v-show="participants.get(participantId)?.videoEnabled === false" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <div v-show="enrichedParticipants.get(participantId)?.videoEnabled === false" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="text-center">
                 <div class="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-3 sm:mb-4">
                   <span class="text-white text-2xl sm:text-3xl md:text-4xl font-bold">
-                    {{ (participants.get(participantId)?.userName || `Guest`).charAt(0).toUpperCase() }}
+                    {{ (enrichedParticipants.get(participantId)?.userName || `Guest`).charAt(0).toUpperCase() }}
                   </span>
                 </div>
                 <p class="text-white text-sm sm:text-base md:text-lg font-medium">
-                  {{ participants.get(participantId)?.userName || `Guest ${participantId.slice(0, 6)}` }}
+                  {{ enrichedParticipants.get(participantId)?.userName || `Guest ${participantId.slice(0, 6)}` }}
                 </p>
                 <p class="text-gray-400 text-xs sm:text-sm mt-1">Camera is off</p>
               </div>
@@ -239,7 +239,7 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <span class="text-white font-medium text-sm drop-shadow">
-                    {{ participants.get(participantId)?.userName || `Guest ${participantId.slice(0, 6)}` }}
+                    {{ enrichedParticipants.get(participantId)?.userName || `Guest ${participantId.slice(0, 6)}` }}
                   </span>
                   <!-- Audio Level Indicator (when speaking) -->
                   <div v-if="activeSpeakerId === participantId" class="flex items-center gap-0.5">
@@ -289,18 +289,18 @@
               autoplay
               playsinline
               class="w-full h-full object-contain"
-              :class="{ 'invisible': !participants.get(spotlightParticipant)?.videoEnabled }"
+              :class="{ 'invisible': !enrichedParticipants.get(spotlightParticipant)?.videoEnabled }"
             ></video>
             
             <!-- Camera Off Placeholder for Remote -->
-            <div v-show="!participants.get(spotlightParticipant)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <div v-show="!enrichedParticipants.get(spotlightParticipant)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="text-center">
                 <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-blue-600 flex items-center justify-center mx-auto mb-4">
                   <span class="text-white text-3xl sm:text-5xl font-bold">
-                    {{ (participants.get(spotlightParticipant)?.userName || 'Guest').charAt(0).toUpperCase() }}
+                    {{ (enrichedParticipants.get(spotlightParticipant)?.userName || 'Guest').charAt(0).toUpperCase() }}
                   </span>
                 </div>
-                <p class="text-white text-base sm:text-lg font-medium">{{ participants.get(spotlightParticipant)?.userName || 'Guest' }}</p>
+                <p class="text-white text-base sm:text-lg font-medium">{{ enrichedParticipants.get(spotlightParticipant)?.userName || 'Guest' }}</p>
                 <p class="text-gray-400 text-sm mt-2">Camera is off</p>
               </div>
             </div>
@@ -310,7 +310,7 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <span class="text-white font-medium text-sm sm:text-base drop-shadow">
-                    {{ participants.get(spotlightParticipant)?.userName || 'Guest' }}
+                    {{ enrichedParticipants.get(spotlightParticipant)?.userName || 'Guest' }}
                   </span>
                   <div v-if="activeSpeakerId === spotlightParticipant" class="flex items-center gap-0.5">
                     <div class="w-0.5 h-3 bg-green-400 rounded animate-pulse"></div>
@@ -320,12 +320,12 @@
                 </div>
                 <!-- Status Indicators -->
                 <div class="flex items-center gap-2">
-                  <div v-if="!participants.get(spotlightParticipant)?.audioEnabled" class="bg-red-600 p-1.5 rounded shadow-lg" title="Microphone off">
+                  <div v-if="!enrichedParticipants.get(spotlightParticipant)?.audioEnabled" class="bg-red-600 p-1.5 rounded shadow-lg" title="Microphone off">
                     <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
                     </svg>
                   </div>
-                  <div v-if="!participants.get(spotlightParticipant)?.videoEnabled" class="bg-gray-700 p-1.5 rounded shadow-lg" title="Camera off">
+                  <div v-if="!enrichedParticipants.get(spotlightParticipant)?.videoEnabled" class="bg-gray-700 p-1.5 rounded shadow-lg" title="Camera off">
                     <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
@@ -426,15 +426,15 @@
               autoplay 
               playsinline 
               class="w-full h-full object-cover"
-              :class="{ 'invisible': !participants.get(participantId)?.videoEnabled }"
+              :class="{ 'invisible': !enrichedParticipants.get(participantId)?.videoEnabled }"
             ></video>
-            <div v-show="!participants.get(participantId)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <div v-show="!enrichedParticipants.get(participantId)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <span class="text-white text-lg font-bold">
-                {{ (participants.get(participantId)?.userName || 'Guest').charAt(0).toUpperCase() }}
+                {{ (enrichedParticipants.get(participantId)?.userName || 'Guest').charAt(0).toUpperCase() }}
               </span>
             </div>
             <div class="absolute bottom-0.5 left-0.5 sm:bottom-1 sm:left-1 text-white text-[10px] sm:text-xs bg-black/60 px-1 sm:px-2 py-0.5 sm:py-1 rounded truncate max-w-[90%]">
-              {{ participants.get(participantId)?.userName || 'Guest' }}
+              {{ enrichedParticipants.get(participantId)?.userName || 'Guest' }}
             </div>
           </div>
         </div>
@@ -455,18 +455,18 @@
               autoplay
               playsinline
               class="w-full h-full object-contain"
-              :class="{ 'invisible': !participants.get(spotlightParticipant)?.videoEnabled }"
+              :class="{ 'invisible': !enrichedParticipants.get(spotlightParticipant)?.videoEnabled }"
             ></video>
             
             <!-- Camera Off Placeholder -->
-            <div v-show="!participants.get(spotlightParticipant)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <div v-show="!enrichedParticipants.get(spotlightParticipant)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="text-center">
                 <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-blue-600 flex items-center justify-center mx-auto mb-4">
                   <span class="text-white text-3xl sm:text-5xl font-bold">
-                    {{ (participants.get(spotlightParticipant)?.userName || 'Guest').charAt(0).toUpperCase() }}
+                    {{ (enrichedParticipants.get(spotlightParticipant)?.userName || 'Guest').charAt(0).toUpperCase() }}
                   </span>
                 </div>
-                <p class="text-white text-base sm:text-lg font-medium">{{ participants.get(spotlightParticipant)?.userName || 'Guest' }}</p>
+                <p class="text-white text-base sm:text-lg font-medium">{{ enrichedParticipants.get(spotlightParticipant)?.userName || 'Guest' }}</p>
                 <p class="text-gray-400 text-sm mt-2">Camera is off</p>
               </div>
             </div>
@@ -476,7 +476,7 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <span class="text-white font-medium text-sm sm:text-base drop-shadow">
-                    {{ participants.get(spotlightParticipant)?.userName || 'Guest' }}
+                    {{ enrichedParticipants.get(spotlightParticipant)?.userName || 'Guest' }}
                   </span>
                   <div v-if="activeSpeakerId === spotlightParticipant" class="flex items-center gap-0.5">
                     <div class="w-0.5 h-3 bg-green-400 rounded animate-pulse"></div>
@@ -485,12 +485,12 @@
                   </div>
                 </div>
                 <div class="flex items-center gap-2">
-                  <div v-if="!participants.get(spotlightParticipant)?.audioEnabled" class="bg-red-600 p-1.5 rounded shadow-lg">
+                  <div v-if="!enrichedParticipants.get(spotlightParticipant)?.audioEnabled" class="bg-red-600 p-1.5 rounded shadow-lg">
                     <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
                     </svg>
                   </div>
-                  <div v-if="!participants.get(spotlightParticipant)?.videoEnabled" class="bg-gray-700 p-1.5 rounded shadow-lg">
+                  <div v-if="!enrichedParticipants.get(spotlightParticipant)?.videoEnabled" class="bg-gray-700 p-1.5 rounded shadow-lg">
                     <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
@@ -593,18 +593,111 @@
               autoplay 
               playsinline 
               class="w-full h-full object-cover"
-              :class="{ 'invisible': !participants.get(participantId)?.videoEnabled }"
+              :class="{ 'invisible': !enrichedParticipants.get(participantId)?.videoEnabled }"
             ></video>
-            <div v-show="!participants.get(participantId)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+            <div v-show="!enrichedParticipants.get(participantId)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
               <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-600 flex items-center justify-center">
                 <span class="text-white text-lg sm:text-2xl font-bold">
-                  {{ (participants.get(participantId)?.userName || 'Guest').charAt(0).toUpperCase() }}
+                  {{ (enrichedParticipants.get(participantId)?.userName || 'Guest').charAt(0).toUpperCase() }}
                 </span>
               </div>
             </div>
             <div class="absolute bottom-1 sm:bottom-2 left-1 sm:left-2 text-white text-xs sm:text-sm bg-black/70 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate max-w-[calc(100%-1rem)]">
-              {{ participants.get(participantId)?.userName || 'Guest' }}
+              {{ enrichedParticipants.get(participantId)?.userName || 'Guest' }}
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Screen Share Layout -->
+      <div v-else-if="currentLayout === 'screenshare'" class="w-full h-full flex flex-col gap-2 sm:gap-4">
+        <!-- Main screen share area (large, fills most of the space) -->
+        <div class="flex-1 flex items-center justify-center bg-black rounded-xl overflow-hidden shadow-2xl">
+          <video
+            ref="screenShareVideoRef"
+            autoplay
+            playsinline
+            class="w-full h-full object-contain"
+          ></video>
+          
+          <!-- Screen Share Info Banner -->
+          <div class="absolute top-3 left-1/2 transform -translate-x-1/2 bg-blue-600 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-10">
+            <svg class="w-5 h-5 text-white animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clip-rule="evenodd" />
+            </svg>
+            <span class="text-white text-sm font-medium">
+              {{ activeScreenShare?.isLocal ? 'You are presenting' : (enrichedParticipants.get(activeScreenShare?.userId)?.userName || 'Someone') + ' is presenting' }}
+            </span>
+          </div>
+          
+          <!-- Stop Sharing Button (for broadcaster) -->
+          <div v-if="activeScreenShare?.isLocal" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+            <button
+              @click="handleScreenShare"
+              class="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg text-white font-medium transition-colors shadow-lg flex items-center gap-2"
+            >
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" />
+              </svg>
+              Stop Sharing
+            </button>
+          </div>
+        </div>
+        
+        <!-- Participant thumbnails strip (bottom) -->
+        <div class="flex gap-2 overflow-x-auto pb-2 px-2">
+          <!-- Local video thumbnail -->
+          <div class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg flex-shrink-0 w-32 h-20 sm:w-40 sm:h-24">
+            <video 
+              ref="localVideoRef" 
+              autoplay 
+              playsinline 
+              muted 
+              class="w-full h-full object-cover transform -scale-x-100"
+              :class="{ 'invisible': !hasVideo || !localStream }"
+            ></video>
+            <div v-show="!hasVideo || !localStream" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+              <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+                <span class="text-white text-lg font-bold">{{ userName.charAt(0).toUpperCase() }}</span>
+              </div>
+            </div>
+            <div class="absolute bottom-1 left-1 text-white text-xs bg-black/70 px-2 py-0.5 rounded">You</div>
+            <div v-if="!hasAudio" class="absolute top-1 right-1 bg-red-600 p-1 rounded">
+              <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- Remote participant thumbnails -->
+          <div
+            v-for="[participantId, stream] in remoteStreams"
+            :key="'screenshare-' + participantId"
+            class="relative bg-[#3C4043] rounded-lg overflow-hidden shadow-lg flex-shrink-0 w-32 h-20 sm:w-40 sm:h-24"
+          >
+            <video 
+              :ref="el => setRemoteVideoRef(el, participantId + '-screenshare')" 
+              autoplay 
+              playsinline 
+              class="w-full h-full object-cover"
+              :class="{ 'invisible': !enrichedParticipants.get(participantId)?.videoEnabled }"
+            ></video>
+            <div v-show="!enrichedParticipants.get(participantId)?.videoEnabled" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+              <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+                <span class="text-white text-lg font-bold">
+                  {{ (enrichedParticipants.get(participantId)?.userName || 'Guest').charAt(0).toUpperCase() }}
+                </span>
+              </div>
+            </div>
+            <div class="absolute bottom-1 left-1 text-white text-xs bg-black/70 px-2 py-0.5 rounded truncate max-w-[90%]">
+              {{ enrichedParticipants.get(participantId)?.userName || 'Guest' }}
+            </div>
+            <div v-if="!enrichedParticipants.get(participantId)?.audioEnabled" class="absolute top-1 right-1 bg-red-600 p-1 rounded">
+              <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div v-if="activeSpeakerId === participantId" class="absolute inset-0 ring-2 ring-green-500 rounded-lg pointer-events-none"></div>
           </div>
         </div>
       </div>
@@ -1041,6 +1134,23 @@ const {
 // Computed
 const totalParticipants = computed(() => {
   return 1 + (participants.value?.size || 0) // 1 (local) + remote participants
+})
+
+// Enrich participants with video/audio state from streams
+const enrichedParticipants = computed(() => {
+  const enriched = new Map()
+  for (const [participantId, participant] of participants.value) {
+    const stream = remoteStreams.value.get(participantId)
+    const hasVideo = stream?.getVideoTracks().some(t => t.enabled && t.readyState === 'live') || false
+    const hasAudio = stream?.getAudioTracks().some(t => t.enabled && t.readyState === 'live') || false
+    
+    enriched.set(participantId, {
+      ...participant,
+      videoEnabled: hasVideo,
+      audioEnabled: hasAudio
+    })
+  }
+  return enriched
 })
 
 const isLocalSpeaking = computed(() => {
@@ -1507,7 +1617,7 @@ const handleScreenShare = async () => {
       screenShareParticipant.value = null
       
       // Restore previous layout
-      if (previousLayout.value && previousLayout.value !== currentLayout.value) {
+      if (previousLayout.value && previousLayout.value !== 'screenshare') {
         currentLayout.value = previousLayout.value
         console.log('[Meeting] Restored layout to:', previousLayout.value)
       }
@@ -1521,15 +1631,12 @@ const handleScreenShare = async () => {
         // Mark local user as screen sharer
         screenShareParticipant.value = socket.value?.id
         
-        // Auto-switch to spotlight layout for better screen sharing experience
-        if (currentLayout.value !== 'spotlight') {
+        // Auto-switch to screen share layout
+        if (currentLayout.value !== 'screenshare') {
           previousLayout.value = currentLayout.value
-          currentLayout.value = 'spotlight'
-          console.log('[Meeting] Auto-switched to spotlight layout for screen sharing')
+          currentLayout.value = 'screenshare'
+          console.log('[Meeting] Auto-switched to screen share layout')
         }
-        
-        // Set self as spotlight participant
-        spotlightParticipant.value = socket.value?.id
       }
     }
   } catch (error) {
@@ -1699,7 +1806,7 @@ watch(remoteStreams, (streams) => {
 }, { deep: true, immediate: true })
 
 // Watch for screen share and attach to video element
-watch(activeScreenShare, (shareData) => {
+watch(activeScreenShare, (shareData, oldShareData) => {
   nextTick(() => {
     if (screenShareVideoRef.value && shareData?.stream) {
       console.log('[Meeting] Attaching screen share stream:', shareData.isLocal ? 'local' : 'remote')
@@ -1707,10 +1814,23 @@ watch(activeScreenShare, (shareData) => {
       screenShareVideoRef.value.play()
         .then(() => console.log('[Meeting] ✅ Screen share playing'))
         .catch(e => console.error('[Meeting] ❌ Screen share play error:', e))
-    } else if (screenShareVideoRef.value && !shareData) {
+      
+      // Auto-switch to screen share layout when someone starts sharing (if not local)
+      if (!shareData.isLocal && currentLayout.value !== 'screenshare') {
+        previousLayout.value = currentLayout.value
+        currentLayout.value = 'screenshare'
+        console.log('[Meeting] Auto-switched to screen share layout (remote user sharing)')
+      }
+    } else if (screenShareVideoRef.value && !shareData && oldShareData) {
       // Clear screen share when stopped
       screenShareVideoRef.value.srcObject = null
       console.log('[Meeting] Screen share stopped')
+      
+      // Restore previous layout when screen share ends
+      if (currentLayout.value === 'screenshare' && previousLayout.value) {
+        currentLayout.value = previousLayout.value
+        console.log('[Meeting] Restored layout after screen share ended')
+      }
     }
   })
 }, { immediate: true })
@@ -1765,7 +1885,8 @@ watch(currentLayout, () => {
           remoteVideoRefs.get(participantId),
           remoteVideoRefs.get(participantId + '-thumb'),
           remoteVideoRefs.get(participantId + '-main'),
-          remoteVideoRefs.get(participantId + '-sidebar')
+          remoteVideoRefs.get(participantId + '-sidebar'),
+          remoteVideoRefs.get(participantId + '-screenshare')
         ]
         
         for (const videoEl of possibleRefs) {
@@ -1775,6 +1896,13 @@ watch(currentLayout, () => {
             videoEl.play().catch(e => console.log('[Meeting] Remote play error:', e.message))
           }
         }
+      }
+      
+      // Re-attach screen share stream if active
+      if (screenShareVideoRef.value && activeScreenShare.value?.stream) {
+        console.log('[Meeting] Re-attaching screen share stream')
+        screenShareVideoRef.value.srcObject = activeScreenShare.value.stream
+        screenShareVideoRef.value.play().catch(e => console.log('[Meeting] Screen share play error:', e.message))
       }
     })
   })
