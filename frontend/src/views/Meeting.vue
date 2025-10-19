@@ -903,7 +903,7 @@
         :socket="socket"
         :meeting-id="meetingId"
         @lock-changed="handleLockChanged"
-        @mute-all="() => {}"
+        @mute-all="handleMuteAll"
         @admit-participant="handleAdmitParticipant"
         @reject-participant="handleRejectParticipant"
         @admit-all="handleAdmitAll"
@@ -2117,6 +2117,12 @@ const handleRejectParticipant = (peerId) => {
 
 const handleAdmitAll = () => {
   waitingParticipants.value = []
+}
+
+const handleMuteAll = () => {
+  console.log('[Meeting] Muting all participants')
+  // The backend will handle muting all participants
+  toastStore.info('Mute all requested - participants can unmute themselves')
 }
 
 const handleEndMeeting = () => {
