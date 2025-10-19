@@ -1891,6 +1891,54 @@ watch(activeScreenShare, (shareData, oldShareData) => {
   })
 }, { immediate: true })
 
+// Watch for remote screen shares
+watch(screenStreams, (streams) => {
+  console.log('[Meeting] Screen streams changed:', streams.size)
+  
+  // If someone is sharing, set them as the screen share participant
+  if (streams.size > 0) {
+    const [participantId, stream] = streams.entries().next().value
+    console.log('[Meeting] Remote screen share detected from:', participantId)
+    
+    // Set screen share participant
+    if (!screenShareParticipant.value || screenShareParticipant.value !== participantId) {
+      screenShareParticipant.value = participantId
+      
+      // Auto-switch to screen share layout
+      if (currentLayout.value !== 'screenshare') {
+        previousLayout.value = currentLayout.value
+        currentLayout.value = 'screenshare'
+        console.log('[Meeting] Auto-switched to screen share layout for remote share')
+      }
+      
+      // Attach to video element
+      if (screenShareVideoRef.value && stream) {
+        screenShareVideoRef.value.srcObject = stream
+        screenShareVideoRef.value.play().catch(e => 
+          console.error('[Meeting] Failed to play remote screen share:', e)
+        )
+      }
+    }
+  } else {
+    // No more screen shares
+    if (screenShareParticipant.value && screenShareParticipant.value !== socket.value?.id) {
+      console.log('[Meeting] Remote screen share ended')
+      screenShareParticipant.value = null
+      
+      // Clear video element
+      if (screenShareVideoRef.value) {
+        screenShareVideoRef.value.srcObject = null
+      }
+      
+      // Restore previous layout
+      if (currentLayout.value === 'screenshare' && previousLayout.value) {
+        currentLayout.value = previousLayout.value
+        console.log('[Meeting] Restored layout after remote screen share ended')
+      }
+    }
+  }
+}, { deep: true, immediate: true })
+
 // Watch remote streams and update participant states reactively
 watch(remoteStreams, (streams) => {
   for (const [participantId, stream] of streams.entries()) {

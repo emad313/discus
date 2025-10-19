@@ -13,7 +13,7 @@ export default defineConfig({
     //   cert: fs.readFileSync(path.resolve(__dirname, 'cert/cert.pem'))
     // },
     allowedHosts: [
-      'alternatively-inn-bend-temporarily.trycloudflare.com' // ngrok domain
+      'mainstream-educational-strategy-ethnic.trycloudflare.com' // ngrok domain
     ],
     port: 5173,      // (optional) customize the port if needed
   },
