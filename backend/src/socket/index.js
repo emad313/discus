@@ -408,6 +408,134 @@ export function setupSocketHandlers(io) {
       }
     });
 
+    // Pause producer (when user turns off camera/mic)
+    socket.on('pause-producer', async ({ producerId }, callback) => {
+      try {
+        const peer = peers.get(socket.id);
+        if (!peer) {
+          throw new Error('Peer not found');
+        }
+
+        const producerData = peer.producers.get(producerId);
+        if (producerData) {
+          const producer = producerData.producer || producerData;
+          const producerKind = producer.kind; // 'video' or 'audio'
+          await producer.pause();
+          
+          // Find and pause all consumers consuming this producer
+          for (const [peerId, peerData] of peers.entries()) {
+            if (peerId === socket.id) continue; // Skip the producer peer
+            
+            for (const [consumerId, consumer] of peerData.consumers.entries()) {
+              if (consumer.producerId === producerId) {
+                await consumer.pause();
+                logger.debug(`Paused consumer ${consumerId} for peer ${peerId}`);
+              }
+            }
+          }
+          
+          // Notify other peers that this producer is paused
+          socket.to(peer.meetingId).emit('producer-paused', {
+            peerId: socket.id,
+            producerId,
+            kind: producerKind,
+          });
+          
+          logger.info(`Peer ${socket.id} paused producer ${producerId} (${producerKind})`);
+        }
+
+        if (callback) {
+          callback({ success: true });
+        }
+      } catch (error) {
+        logger.error('Error pausing producer:', error);
+        if (callback) {
+          callback({ success: false, error: error.message });
+        }
+      }
+    });
+
+    // Resume producer (when user turns on camera/mic)
+    socket.on('resume-producer', async ({ producerId }, callback) => {
+      try {
+        const peer = peers.get(socket.id);
+        if (!peer) {
+          throw new Error('Peer not found');
+        }
+
+        const producerData = peer.producers.get(producerId);
+        if (producerData) {
+          const producer = producerData.producer || producerData;
+          const producerKind = producer.kind; // 'video' or 'audio'
+          await producer.resume();
+          
+          // Find and resume all consumers consuming this producer
+          for (const [peerId, peerData] of peers.entries()) {
+            if (peerId === socket.id) continue; // Skip the producer peer
+            
+            for (const [consumerId, consumer] of peerData.consumers.entries()) {
+              if (consumer.producerId === producerId) {
+                await consumer.resume();
+                logger.debug(`Resumed consumer ${consumerId} for peer ${peerId}`);
+              }
+            }
+          }
+          
+          // Notify other peers that this producer is resumed
+          socket.to(peer.meetingId).emit('producer-resumed', {
+            peerId: socket.id,
+            producerId,
+            kind: producerKind,
+          });
+          
+          logger.info(`Peer ${socket.id} resumed producer ${producerId} (${producerKind})`);
+        }
+
+        if (callback) {
+          callback({ success: true });
+        }
+      } catch (error) {
+        logger.error('Error resuming producer:', error);
+        if (callback) {
+          callback({ success: false, error: error.message });
+        }
+      }
+    });
+
+    // Close producer
+    socket.on('close-producer', async ({ producerId }, callback) => {
+      try {
+        const peer = peers.get(socket.id);
+        if (!peer) {
+          throw new Error('Peer not found');
+        }
+
+        const producerData = peer.producers.get(producerId);
+        if (producerData) {
+          const producer = producerData.producer || producerData;
+          producer.close();
+          peer.producers.delete(producerId);
+          
+          // Notify other peers that this producer is closed
+          socket.to(peer.meetingId).emit('producer-closed', {
+            peerId: socket.id,
+            producerId,
+          });
+          
+          logger.info(`Peer ${socket.id} closed producer ${producerId}`);
+        }
+
+        if (callback) {
+          callback({ success: true });
+        }
+      } catch (error) {
+        logger.error('Error closing producer:', error);
+        if (callback) {
+          callback({ success: false, error: error.message });
+        }
+      }
+    });
+
     // Leave meeting
     socket.on('leave-meeting', () => {
       handlePeerDisconnect(socket);

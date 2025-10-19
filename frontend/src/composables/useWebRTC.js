@@ -12,6 +12,7 @@ const consumers = ref(new Map()) // Map of consumerId -> consumer
 const remoteStreams = ref(new Map()) // Map of participantId -> MediaStream (camera/mic)
 const screenStreams = ref(new Map()) // Map of participantId -> MediaStream (screen share)
 const participants = ref(new Map()) // Map of participantId -> participant info
+const producerStates = ref(new Map()) // Map of producerId -> { paused: boolean, peerId: string, kind: string }
 const isConnected = ref(false)
 const isProducing = ref(false)
 const currentRoomId = ref(null) // Store current meeting/room ID
@@ -483,15 +484,56 @@ export function useWebRTC() {
     // Producer closed
     socket.value.on('producer-closed', ({ producerId, peerId }) => {
       console.log('[WebRTC] Producer closed:', producerId, 'from:', peerId)
-      // Remove track from remote stream
-      const stream = remoteStreams.value.get(peerId)
-      if (stream) {
-        // Clean up tracks
-        stream.getTracks().forEach(track => {
-          track.stop()
-          stream.removeTrack(track)
-        })
+      
+      // Check if it's a screen share producer
+      const screenStream = screenStreams.value.get(peerId)
+      if (screenStream) {
+        console.log('[WebRTC] Removing screen share stream for:', peerId)
+        screenStreams.value.delete(peerId)
+        screenStream.getTracks().forEach(track => track.stop())
+        return
       }
+      
+      // Otherwise, handle regular stream
+      // Note: We don't remove all tracks, just let the consumer handle it
+      // The stream will update when tracks are removed by the consumer
+      console.log('[WebRTC] Producer', producerId, 'closed, stream will update automatically')
+    })
+
+    // Listen for producer paused (camera/mic off)
+    socket.value.on('producer-paused', ({ producerId, peerId, kind }) => {
+      console.log('[WebRTC] Producer paused:', kind, producerId, 'from:', peerId)
+      
+      // Update producer state
+      producerStates.value.set(producerId, { 
+        paused: true, 
+        peerId,
+        kind,
+        timestamp: Date.now()
+      })
+      
+      // Force reactivity by creating new Map
+      producerStates.value = new Map(producerStates.value)
+      
+      console.log('[WebRTC] Updated producer states, paused:', kind, 'for peer:', peerId)
+    })
+
+    // Listen for producer resumed (camera/mic on)
+    socket.value.on('producer-resumed', ({ producerId, peerId, kind }) => {
+      console.log('[WebRTC] Producer resumed:', kind, producerId, 'from:', peerId)
+      
+      // Update producer state
+      producerStates.value.set(producerId, { 
+        paused: false, 
+        peerId,
+        kind,
+        timestamp: Date.now()
+      })
+      
+      // Force reactivity by creating new Map
+      producerStates.value = new Map(producerStates.value)
+      
+      console.log('[WebRTC] Updated producer states, resumed:', kind, 'for peer:', peerId)
     })
 
     // Peer left (fixed event name: peer-left not participant-left)
@@ -619,6 +661,7 @@ export function useWebRTC() {
     remoteStreams,
     screenStreams,
     participants,
+    producerStates,
     producerIds,
     consumerIds,
     remoteParticipants,
@@ -634,6 +677,8 @@ export function useWebRTC() {
     consume,
     consumePendingProducers,
     closeProducer,
+    pauseProducer,
+    resumeProducer,
     pauseProducer,
     resumeProducer,
   }

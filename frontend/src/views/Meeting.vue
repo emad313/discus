@@ -1047,7 +1047,13 @@ const isLocalActive = ref(false)
 const currentLayout = ref('grid')
 const spotlightParticipant = ref(null)
 const screenShareParticipant = ref(null)
+const screenProducerId = ref(null) // Track screen share producer ID
+const videoProducerId = ref(null) // Track video producer ID
+const audioProducerId = ref(null) // Track audio producer ID
 const previousLayout = ref('grid')
+
+// Track participant video/audio state reactively
+const participantStates = ref(new Map()) // Map<participantId, { videoEnabled, audioEnabled }>
 
 // Host Controls refs
 const isHost = ref(false)
@@ -1080,12 +1086,16 @@ const {
   initialize: initWebRTC,
   joinRoom,
   produce,
+  closeProducer,
+  pauseProducer,
+  resumeProducer,
   consumePendingProducers,
   leaveRoom,
   remoteStreams,
   screenStreams,
   isConnected,
   participants,
+  producerStates,
   socket,
 } = useWebRTC()
 
@@ -1140,14 +1150,13 @@ const totalParticipants = computed(() => {
 const enrichedParticipants = computed(() => {
   const enriched = new Map()
   for (const [participantId, participant] of participants.value) {
-    const stream = remoteStreams.value.get(participantId)
-    const hasVideo = stream?.getVideoTracks().some(t => t.enabled && t.readyState === 'live') || false
-    const hasAudio = stream?.getAudioTracks().some(t => t.enabled && t.readyState === 'live') || false
+    // Get state from reactive tracking map
+    const state = participantStates.value.get(participantId) || { videoEnabled: false, audioEnabled: false }
     
     enriched.set(participantId, {
       ...participant,
-      videoEnabled: hasVideo,
-      audioEnabled: hasAudio
+      videoEnabled: state.videoEnabled,
+      audioEnabled: state.audioEnabled
     })
   }
   return enriched
@@ -1485,7 +1494,9 @@ const initializeMeeting = async () => {
       if (videoTrack) {
         try {
           console.log('[Meeting] Producing video track...')
-          await produce(videoTrack, 'video')
+          const videoProducer = await produce(videoTrack, 'video')
+          videoProducerId.value = videoProducer.id
+          console.log('[Meeting] Video producer ID:', videoProducer.id)
         } catch (produceError) {
           console.error('[Meeting] Failed to produce video:', produceError)
         }
@@ -1498,7 +1509,9 @@ const initializeMeeting = async () => {
       if (audioTrack) {
         try {
           console.log('[Meeting] Producing audio track...')
-          await produce(audioTrack, 'audio')
+          const audioProducer = await produce(audioTrack, 'audio')
+          audioProducerId.value = audioProducer.id
+          console.log('[Meeting] Audio producer ID:', audioProducer.id)
         } catch (produceError) {
           console.error('[Meeting] Failed to produce audio:', produceError)
         }
@@ -1575,13 +1588,29 @@ const updateUserName = (newName) => {
 // Handle toggle audio
 const handleToggleAudio = async () => {
   try {
-    await toggleAudio()
-    
-    if (hasAudio.value) {
-      // Produce new audio track
-      const audioTrack = getAudioTrack()
-      if (audioTrack) {
-        await produce(audioTrack, 'audio')
+    if (audioProducerId.value) {
+      // Toggle the existing audio producer by pausing/resuming
+      if (audioEnabled.value) {
+        // Currently ON, turn it OFF
+        pauseProducer(audioProducerId.value)
+        audioEnabled.value = false
+        console.log('[Meeting] Paused audio producer')
+      } else {
+        // Currently OFF, turn it ON
+        resumeProducer(audioProducerId.value)
+        audioEnabled.value = true
+        console.log('[Meeting] Resumed audio producer')
+      }
+    } else {
+      // No producer exists, start audio
+      await toggleAudio()
+      if (hasAudio.value) {
+        const audioTrack = getAudioTrack()
+        if (audioTrack) {
+          const audioProducer = await produce(audioTrack, 'audio')
+          audioProducerId.value = audioProducer.id
+          console.log('[Meeting] Created new audio producer:', audioProducer.id)
+        }
       }
     }
   } catch (error) {
@@ -1593,13 +1622,29 @@ const handleToggleAudio = async () => {
 // Handle toggle video
 const handleToggleVideo = async () => {
   try {
-    await toggleVideo()
-    
-    if (hasVideo.value) {
-      // Produce new video track
-      const videoTrack = getVideoTrack()
-      if (videoTrack) {
-        await produce(videoTrack, 'video')
+    if (videoProducerId.value) {
+      // Toggle the existing video producer by pausing/resuming
+      if (videoEnabled.value) {
+        // Currently ON, turn it OFF
+        pauseProducer(videoProducerId.value)
+        videoEnabled.value = false
+        console.log('[Meeting] Paused video producer')
+      } else {
+        // Currently OFF, turn it ON
+        resumeProducer(videoProducerId.value)
+        videoEnabled.value = true
+        console.log('[Meeting] Resumed video producer')
+      }
+    } else {
+      // No producer exists, start video
+      await toggleVideo()
+      if (hasVideo.value) {
+        const videoTrack = getVideoTrack()
+        if (videoTrack) {
+          const videoProducer = await produce(videoTrack, 'video')
+          videoProducerId.value = videoProducer.id
+          console.log('[Meeting] Created new video producer:', videoProducer.id)
+        }
       }
     }
   } catch (error) {
@@ -1614,6 +1659,13 @@ const handleScreenShare = async () => {
     if (hasScreenShare.value) {
       // Stop screen sharing
       stopScreenShare()
+      
+      // Close the screen producer on server
+      if (screenProducerId.value) {
+        closeProducer(screenProducerId.value)
+        screenProducerId.value = null
+      }
+      
       screenShareParticipant.value = null
       
       // Restore previous layout
@@ -1626,7 +1678,11 @@ const handleScreenShare = async () => {
       await startScreenShare()
       const screenTrack = getScreenTrack()
       if (screenTrack) {
-        await produce(screenTrack, 'video', 'screen')  // Pass 'screen' as producerType
+        const producer = await produce(screenTrack, 'video', 'screen')  // Pass 'screen' as producerType
+        
+        // Save producer ID so we can close it later
+        screenProducerId.value = producer.id
+        console.log('[Meeting] Screen share producer created:', producer.id)
         
         // Mark local user as screen sharer
         screenShareParticipant.value = socket.value?.id
@@ -1834,6 +1890,96 @@ watch(activeScreenShare, (shareData, oldShareData) => {
     }
   })
 }, { immediate: true })
+
+// Watch remote streams and update participant states reactively
+watch(remoteStreams, (streams) => {
+  for (const [participantId, stream] of streams.entries()) {
+    if (stream) {
+      const videoTracks = stream.getVideoTracks()
+      const audioTracks = stream.getAudioTracks()
+      
+      const hasVideo = videoTracks.length > 0 && videoTracks.some(t => t.enabled && t.readyState === 'live')
+      const hasAudio = audioTracks.length > 0 && audioTracks.some(t => t.enabled && t.readyState === 'live')
+      
+      // Update reactive state
+      participantStates.value.set(participantId, {
+        videoEnabled: hasVideo,
+        audioEnabled: hasAudio
+      })
+      
+      console.log(`[Meeting] Updated state for ${participantId}: video=${hasVideo}, audio=${hasAudio}`)
+      
+      // Add event listeners to tracks for real-time updates
+      const updateState = () => {
+        const vTracks = stream.getVideoTracks()
+        const aTracks = stream.getAudioTracks()
+        const vEnabled = vTracks.length > 0 && vTracks.some(t => t.enabled && t.readyState === 'live')
+        const aEnabled = aTracks.length > 0 && aTracks.some(t => t.enabled && t.readyState === 'live')
+        
+        participantStates.value.set(participantId, {
+          videoEnabled: vEnabled,
+          audioEnabled: aEnabled
+        })
+        // Force reactivity
+        participantStates.value = new Map(participantStates.value)
+        console.log(`[Meeting] Track change for ${participantId}: video=${vEnabled}, audio=${aEnabled}`)
+      }
+      
+      // Listen for track events
+      videoTracks.forEach(track => {
+        track.onmute = updateState
+        track.onunmute = updateState
+        track.onended = updateState
+      })
+      
+      audioTracks.forEach(track => {
+        track.onmute = updateState
+        track.onunmute = updateState
+        track.onended = updateState
+      })
+      
+      // Listen for track added/removed
+      stream.onaddtrack = updateState
+      stream.onremovetrack = updateState
+    }
+  }
+  
+  // Remove states for participants who left
+  for (const participantId of participantStates.value.keys()) {
+    if (!streams.has(participantId)) {
+      participantStates.value.delete(participantId)
+      console.log(`[Meeting] Removed state for ${participantId}`)
+    }
+  }
+  
+  // Force reactivity update
+  participantStates.value = new Map(participantStates.value)
+}, { deep: true, immediate: true })
+
+// Watch for producer pause/resume events
+watch(producerStates, (states) => {
+  for (const [producerId, state] of states.entries()) {
+    const { paused, peerId, kind } = state
+    
+    // Get current participant state
+    const currentState = participantStates.value.get(peerId) || { videoEnabled: false, audioEnabled: false }
+    
+    // Update based on kind and paused status
+    if (kind === 'video') {
+      currentState.videoEnabled = !paused
+      console.log(`[Meeting] Producer update: ${peerId} video=${!paused} (from producerStates)`)
+    } else if (kind === 'audio') {
+      currentState.audioEnabled = !paused
+      console.log(`[Meeting] Producer update: ${peerId} audio=${!paused} (from producerStates)`)
+    }
+    
+    // Update participant state
+    participantStates.value.set(peerId, currentState)
+  }
+  
+  // Force reactivity
+  participantStates.value = new Map(participantStates.value)
+}, { deep: true })
 
 // Watch for participant changes to show notifications
 watch(() => participants.value.size, (newSize, oldSize) => {
