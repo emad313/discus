@@ -1645,6 +1645,42 @@ watch(() => participants.value.size, (newSize, oldSize) => {
   }
 })
 
+// Watch for layout changes and re-attach streams to new video elements
+watch(currentLayout, () => {
+  nextTick(() => {
+    nextTick(() => {
+      console.log('[Meeting] Layout changed, re-attaching streams...')
+      
+      // Re-attach local stream
+      if (localVideoRef.value && localStream.value && localVideoRef.value.srcObject !== localStream.value) {
+        console.log('[Meeting] Re-attaching local stream after layout change')
+        localVideoRef.value.srcObject = localStream.value
+        localVideoRef.value.play().catch(e => console.log('[Meeting] Local play error:', e.message))
+      }
+      
+      // Re-attach all remote streams by checking ALL ref keys in the map
+      for (const [participantId, stream] of remoteStreams.value.entries()) {
+        // Find any video element that matches this participant
+        // Check all possible ref key variations
+        const possibleRefs = [
+          remoteVideoRefs.get(participantId),
+          remoteVideoRefs.get(participantId + '-thumb'),
+          remoteVideoRefs.get(participantId + '-main'),
+          remoteVideoRefs.get(participantId + '-sidebar')
+        ]
+        
+        for (const videoEl of possibleRefs) {
+          if (videoEl && stream && videoEl.srcObject !== stream) {
+            console.log('[Meeting] Re-attaching stream for participant:', participantId)
+            videoEl.srcObject = stream
+            videoEl.play().catch(e => console.log('[Meeting] Remote play error:', e.message))
+          }
+        }
+      }
+    })
+  })
+})
+
 // Host Control Handlers
 const handleLockChanged = (locked) => {
   isLocked.value = locked

@@ -13,7 +13,7 @@ export default defineConfig({
     //   cert: fs.readFileSync(path.resolve(__dirname, 'cert/cert.pem'))
     // },
     allowedHosts: [
-      'reasons-missing-tube-exports.trycloudflare.com' // ngrok domain
+      'health-occasion-programme-referenced.trycloudflare.com' // ngrok domain
     ],
     port: 5173,      // (optional) customize the port if needed
   },
