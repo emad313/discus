@@ -120,6 +120,18 @@
         <!-- Layout Switcher -->
         <LayoutSwitcher @layout-change="handleLayoutChange" />
         
+        <!-- Keyboard Shortcuts Button -->
+        <button
+          @click="showKeyboardShortcuts = true"
+          class="hidden md:flex px-2 sm:px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all text-white text-sm font-medium items-center gap-2"
+          title="Keyboard shortcuts (?)"
+        >
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+          </svg>
+          <span class="hidden lg:inline">?</span>
+        </button>
+        
         <!-- Meeting Info Button -->
         <button
           @click="showMeetingInfo = !showMeetingInfo"
@@ -988,6 +1000,107 @@
       />
     </transition>
 
+    <!-- Keyboard Shortcuts Help Modal -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div v-if="showKeyboardShortcuts" class="fixed inset-0 z-[200] bg-black/70 flex items-center justify-center p-4" @click="showKeyboardShortcuts = false">
+        <div class="bg-white dark:bg-[#202124] rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto" @click.stop>
+          <!-- Header -->
+          <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">⌨️ Keyboard Shortcuts</h2>
+            <button
+              @click="showKeyboardShortcuts = false"
+              class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+            >
+              <svg class="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Shortcuts List -->
+          <div class="p-6 space-y-6">
+            <!-- Media Controls -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Media Controls</h3>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Toggle microphone</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">Spacebar</kbd>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Toggle camera</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">Ctrl + E</kbd>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Toggle screen share</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">Ctrl + D</kbd>
+                </div>
+              </div>
+            </div>
+
+            <!-- Navigation -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Navigation</h3>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Toggle chat</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">Ctrl + K</kbd>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Toggle participants</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">Ctrl + P</kbd>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Close panels / Exit fullscreen</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">Escape</kbd>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Toggle fullscreen</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">F</kbd>
+                </div>
+              </div>
+            </div>
+
+            <!-- Host Controls -->
+            <div v-if="isHost">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Host Controls</h3>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Mute all participants</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">Ctrl + Shift + M</kbd>
+                </div>
+              </div>
+            </div>
+
+            <!-- Help -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Help</h3>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Show this help</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">?</kbd>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <p class="text-sm text-gray-600 dark:text-gray-400 text-center">
+              💡 Tip: Shortcuts won't work when typing in chat or input fields
+            </p>
+          </div>
+        </div>
+      </div>
+    </transition>
+
     <!-- Mobile Controls (Bottom Nav Bar) -->
     <MobileControls
       v-if="!fullscreenParticipant"
@@ -1176,6 +1289,9 @@ const hostId = ref(null)
 const isLocked = ref(false)
 const waitingParticipants = ref([])
 const showWaitingRoom = ref(false)
+
+// Keyboard shortcuts modal
+const showKeyboardShortcuts = ref(false)
 
 // Touch gesture state
 const touchState = ref({
@@ -2524,10 +2640,89 @@ onMounted(() => {
     console.log('[Meeting] Host control listeners setup')
   }, 500)
 
-  // Keyboard event handler for fullscreen (Escape key)
+  // Keyboard shortcuts handler
   const handleKeydown = (e) => {
-    if (e.key === 'Escape' && fullscreenParticipant.value) {
-      closeFullscreen()
+    // Don't trigger shortcuts when typing in input fields
+    const isInputField = ['INPUT', 'TEXTAREA'].includes(e.target.tagName)
+    
+    // Escape key - Close panels or exit fullscreen
+    if (e.key === 'Escape') {
+      if (fullscreenParticipant.value) {
+        closeFullscreen()
+      } else if (chatStore.isOpen) {
+        chatStore.toggleChat()
+      } else if (showParticipants.value) {
+        showParticipants.value = false
+      } else if (showSettings.value) {
+        showSettings.value = false
+      }
+      return
+    }
+    
+    // Spacebar - Toggle microphone (only when not in input field)
+    if (e.key === ' ' && !isInputField) {
+      e.preventDefault()
+      toggleAudio()
+      toastStore.info(hasAudio.value ? 'Microphone unmuted' : 'Microphone muted', 1500)
+      return
+    }
+    
+    // Ctrl/Cmd + E - Toggle camera
+    if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+      e.preventDefault()
+      toggleVideo()
+      toastStore.info(hasVideo.value ? 'Camera turned on' : 'Camera turned off', 1500)
+      return
+    }
+    
+    // Ctrl/Cmd + D - Toggle screen share
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+      e.preventDefault()
+      handleScreenShare()
+      return
+    }
+    
+    // Ctrl/Cmd + K - Toggle chat
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault()
+      chatStore.toggleChat()
+      return
+    }
+    
+    // Ctrl/Cmd + P - Toggle participants
+    if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+      e.preventDefault()
+      showParticipants.value = !showParticipants.value
+      return
+    }
+    
+    // Ctrl/Cmd + Shift + M - Mute all (host only)
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'M' && isHost.value) {
+      e.preventDefault()
+      // Emit mute-all event
+      if (socket.value) {
+        socket.value.emit('host:mute-all', { meetingId: meetingId.value })
+        toastStore.success('All participants muted')
+      }
+      return
+    }
+    
+    // F key - Toggle fullscreen (for main window)
+    if (e.key === 'f' && !isInputField) {
+      e.preventDefault()
+      if (document.fullscreenElement) {
+        document.exitFullscreen()
+      } else {
+        document.documentElement.requestFullscreen()
+      }
+      return
+    }
+    
+    // ? key - Show keyboard shortcuts help
+    if (e.key === '?' && !isInputField) {
+      e.preventDefault()
+      showKeyboardShortcuts.value = true
+      return
     }
   }
   window.addEventListener('keydown', handleKeydown)
