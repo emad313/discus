@@ -1,6 +1,7 @@
 import { logger } from '../utils/logger.js';
 import { getMediasoupWorkerManager } from '../services/mediasoup/worker.js';
 import { createWebRtcTransport, connectTransport } from '../services/mediasoup/transport.js';
+import { saveChatMessage, getChatHistory, createMeeting, addParticipant } from '../services/database.js';
 
 // Store room state
 const rooms = new Map(); // meetingId -> room data
@@ -100,15 +101,33 @@ export function setupSocketHandlers(io) {
         if (room.peers.size === 0) {
           room.hostId = socket.id;
           logger.info(`${socket.id} (${userName}) is now the host of room ${meetingId}`);
+          
+          // Create meeting in database
+          try {
+            await createMeeting(meetingId, socket.id);
+          } catch (dbError) {
+            logger.warn('[Database] Failed to create meeting (continuing):', dbError.message);
+          }
         }
 
         // Store peer info
         const isHost = socket.id === room.hostId;
+        
+        // Add participant to database
+        let participantDbId = null;
+        try {
+          const dbResult = await addParticipant(meetingId, socket.id, userName, isHost);
+          participantDbId = dbResult.id;
+        } catch (dbError) {
+          logger.warn('[Database] Failed to add participant (continuing):', dbError.message);
+        }
+        
         peers.set(socket.id, {
           socketId: socket.id,
           meetingId,
           userName,
           isHost,
+          participantDbId, // Store DB ID for chat messages
           transports: new Map(),
           producers: new Map(),
           consumers: new Map(),
@@ -128,11 +147,29 @@ export function setupSocketHandlers(io) {
           .map(([id, peer]) => ({
             peerId: id,
             userName: peer.userName,
-            producers: Array.from(peer.producers.entries()).map(([producerId, producer]) => ({
+            producers: Array.from(peer.producers.entries()).map(([producerId, producerData]) => ({
               id: producerId,
-              kind: producer.kind,
+              kind: producerData.kind || producerData.producer?.kind,
+              producerType: producerData.type || producerData.kind, // Include type
             })),
           }));
+
+        // Load chat history from database
+        let chatHistory = [];
+        try {
+          const messages = await getChatHistory(meetingId, 100);
+          chatHistory = messages.map(msg => ({
+            id: msg.id,
+            senderId: msg.participant_id || 'unknown',
+            senderName: msg.username,
+            message: msg.message,
+            timestamp: new Date(msg.sent_at).getTime(),
+            meetingId,
+          }));
+          logger.debug(`[Database] Loaded ${chatHistory.length} chat messages for ${meetingId}`);
+        } catch (dbError) {
+          logger.warn('[Database] Failed to load chat history (continuing):', dbError.message);
+        }
 
         // Send router RTP capabilities
         callback({
@@ -142,6 +179,7 @@ export function setupSocketHandlers(io) {
           isHost: socket.id === room.hostId,
           hostId: room.hostId,
           isLocked: room.isLocked,
+          chatHistory, // Send chat history to new joiner
         });
 
         // Emit participant update to preview rooms
@@ -228,8 +266,8 @@ export function setupSocketHandlers(io) {
       }
     });
 
-    // Produce media (audio/video)
-    socket.on('produce', async ({ transportId, kind, rtpParameters }, callback) => {
+    // Produce media (audio/video/screen)
+    socket.on('produce', async ({ transportId, kind, rtpParameters, appData }, callback) => {
       try {
         const peer = peers.get(socket.id);
         const transportData = peer.transports.get(transportId);
@@ -241,15 +279,23 @@ export function setupSocketHandlers(io) {
         const producer = await transportData.transport.produce({
           kind,
           rtpParameters,
+          appData: appData || {}, // Pass through appData to track producer type
         });
 
-        peer.producers.set(producer.id, producer);
+        // Store producer with its type (video, audio, or screen)
+        const producerType = appData?.producerType || kind;
+        peer.producers.set(producer.id, { 
+          producer, 
+          kind, 
+          type: producerType 
+        });
 
         // Notify other peers about the new producer
         socket.to(peer.meetingId).emit('new-producer', {
           peerId: socket.id,
           producerId: producer.id,
           kind,
+          producerType, // Include type so consumers know if it's screen or camera
         });
 
         callback({
@@ -257,7 +303,7 @@ export function setupSocketHandlers(io) {
           id: producer.id,
         });
 
-        logger.info(`Peer ${socket.id} producing ${kind}, producer ID: ${producer.id}`);
+        logger.info(`Peer ${socket.id} producing ${producerType} (${kind}), producer ID: ${producer.id}`);
 
       } catch (error) {
         logger.error('Error producing media:', error);
@@ -287,10 +333,13 @@ export function setupSocketHandlers(io) {
         // Find the producer
         let producer = null;
         let producerPeer = null;
+        let producerType = null;
         
         for (const [peerId, peerData] of room.peers.entries()) {
           if (peerData.producers.has(producerId)) {
-            producer = peerData.producers.get(producerId);
+            const producerData = peerData.producers.get(producerId);
+            producer = producerData.producer || producerData; // Support both old and new format
+            producerType = producerData.type || producerData.kind;
             producerPeer = peerData;
             break;
           }
@@ -320,9 +369,10 @@ export function setupSocketHandlers(io) {
           producerId: producer.id,
           kind: consumer.kind,
           rtpParameters: consumer.rtpParameters,
+          producerType, // Include producer type in response
         });
 
-        logger.info(`Peer ${socket.id} consuming ${consumer.kind} from producer ${producerId}`);
+        logger.info(`Peer ${socket.id} consuming ${producerType || consumer.kind} from producer ${producerId}`);
 
       } catch (error) {
         logger.error('Error consuming media:', error);
@@ -358,6 +408,134 @@ export function setupSocketHandlers(io) {
       }
     });
 
+    // Pause producer (when user turns off camera/mic)
+    socket.on('pause-producer', async ({ producerId }, callback) => {
+      try {
+        const peer = peers.get(socket.id);
+        if (!peer) {
+          throw new Error('Peer not found');
+        }
+
+        const producerData = peer.producers.get(producerId);
+        if (producerData) {
+          const producer = producerData.producer || producerData;
+          const producerKind = producer.kind; // 'video' or 'audio'
+          await producer.pause();
+          
+          // Find and pause all consumers consuming this producer
+          for (const [peerId, peerData] of peers.entries()) {
+            if (peerId === socket.id) continue; // Skip the producer peer
+            
+            for (const [consumerId, consumer] of peerData.consumers.entries()) {
+              if (consumer.producerId === producerId) {
+                await consumer.pause();
+                logger.debug(`Paused consumer ${consumerId} for peer ${peerId}`);
+              }
+            }
+          }
+          
+          // Notify other peers that this producer is paused
+          socket.to(peer.meetingId).emit('producer-paused', {
+            peerId: socket.id,
+            producerId,
+            kind: producerKind,
+          });
+          
+          logger.info(`Peer ${socket.id} paused producer ${producerId} (${producerKind})`);
+        }
+
+        if (callback) {
+          callback({ success: true });
+        }
+      } catch (error) {
+        logger.error('Error pausing producer:', error);
+        if (callback) {
+          callback({ success: false, error: error.message });
+        }
+      }
+    });
+
+    // Resume producer (when user turns on camera/mic)
+    socket.on('resume-producer', async ({ producerId }, callback) => {
+      try {
+        const peer = peers.get(socket.id);
+        if (!peer) {
+          throw new Error('Peer not found');
+        }
+
+        const producerData = peer.producers.get(producerId);
+        if (producerData) {
+          const producer = producerData.producer || producerData;
+          const producerKind = producer.kind; // 'video' or 'audio'
+          await producer.resume();
+          
+          // Find and resume all consumers consuming this producer
+          for (const [peerId, peerData] of peers.entries()) {
+            if (peerId === socket.id) continue; // Skip the producer peer
+            
+            for (const [consumerId, consumer] of peerData.consumers.entries()) {
+              if (consumer.producerId === producerId) {
+                await consumer.resume();
+                logger.debug(`Resumed consumer ${consumerId} for peer ${peerId}`);
+              }
+            }
+          }
+          
+          // Notify other peers that this producer is resumed
+          socket.to(peer.meetingId).emit('producer-resumed', {
+            peerId: socket.id,
+            producerId,
+            kind: producerKind,
+          });
+          
+          logger.info(`Peer ${socket.id} resumed producer ${producerId} (${producerKind})`);
+        }
+
+        if (callback) {
+          callback({ success: true });
+        }
+      } catch (error) {
+        logger.error('Error resuming producer:', error);
+        if (callback) {
+          callback({ success: false, error: error.message });
+        }
+      }
+    });
+
+    // Close producer
+    socket.on('close-producer', async ({ producerId }, callback) => {
+      try {
+        const peer = peers.get(socket.id);
+        if (!peer) {
+          throw new Error('Peer not found');
+        }
+
+        const producerData = peer.producers.get(producerId);
+        if (producerData) {
+          const producer = producerData.producer || producerData;
+          producer.close();
+          peer.producers.delete(producerId);
+          
+          // Notify other peers that this producer is closed
+          socket.to(peer.meetingId).emit('producer-closed', {
+            peerId: socket.id,
+            producerId,
+          });
+          
+          logger.info(`Peer ${socket.id} closed producer ${producerId}`);
+        }
+
+        if (callback) {
+          callback({ success: true });
+        }
+      } catch (error) {
+        logger.error('Error closing producer:', error);
+        if (callback) {
+          callback({ success: false, error: error.message });
+        }
+      }
+    });
+
     // Leave meeting
     socket.on('leave-meeting', () => {
       handlePeerDisconnect(socket);
@@ -366,7 +544,7 @@ export function setupSocketHandlers(io) {
     // ========== CHAT EVENTS ==========
     
     // Send chat message
-    socket.on('send-message', ({ meetingId, message, timestamp }, callback) => {
+    socket.on('send-message', async ({ meetingId, message, timestamp }, callback) => {
       try {
         const peer = peers.get(socket.id);
         if (!peer) {
@@ -383,6 +561,19 @@ export function setupSocketHandlers(io) {
         };
 
         logger.info(`Chat message from ${peer.userName} in ${meetingId}: ${message}`);
+
+        // Save to database
+        try {
+          await saveChatMessage({
+            meetingId,
+            participantId: peer.participantDbId,
+            username: peer.userName,
+            message: message.trim(),
+          });
+          logger.debug(`[Database] Chat message saved for ${meetingId}`);
+        } catch (dbError) {
+          logger.warn('[Database] Failed to save chat message (continuing):', dbError.message);
+        }
 
         // Broadcast to all users in the meeting (including sender)
         io.to(meetingId).emit('receive-message', chatMessage);
@@ -728,7 +919,8 @@ function handlePeerDisconnect(socket) {
   const { meetingId, userName } = peer;
 
   // Close all producers
-  peer.producers.forEach((producer) => {
+  peer.producers.forEach((producerData) => {
+    const producer = producerData.producer || producerData;
     producer.close();
   });
 

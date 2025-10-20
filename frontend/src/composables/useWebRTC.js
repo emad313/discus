@@ -7,10 +7,12 @@ const device = ref(null)
 const socket = ref(null)
 const sendTransport = ref(null)
 const recvTransport = ref(null)
-const producers = ref(new Map()) // Map of producerId -> producer
+const producers = ref(new Map()) // Map of producerId -> { producer, kind, type }
 const consumers = ref(new Map()) // Map of consumerId -> consumer
-const remoteStreams = ref(new Map()) // Map of participantId -> MediaStream
+const remoteStreams = ref(new Map()) // Map of participantId -> MediaStream (camera/mic)
+const screenStreams = ref(new Map()) // Map of participantId -> MediaStream (screen share)
 const participants = ref(new Map()) // Map of participantId -> participant info
+const producerStates = ref(new Map()) // Map of producerId -> { paused: boolean, peerId: string, kind: string }
 const isConnected = ref(false)
 const isProducing = ref(false)
 const currentRoomId = ref(null) // Store current meeting/room ID
@@ -82,14 +84,15 @@ export function useWebRTC() {
               if (peer.producers && peer.producers.length > 0) {
                 console.log('[WebRTC] Peer', peer.userName, 'has', peer.producers.length, 'producer(s)')
                 for (const producer of peer.producers) {
-                  console.log('[WebRTC] Will consume', producer.kind, 'from peer', peer.peerId)
+                  console.log('[WebRTC] Will consume', producer.producerType || producer.kind, 'from peer', peer.peerId)
                   // We'll consume these after creating recv transport
                   // Store them for later consumption
                   if (!window._pendingConsumers) window._pendingConsumers = []
                   window._pendingConsumers.push({
                     producerId: producer.id,
                     peerId: peer.peerId,
-                    kind: producer.kind
+                    kind: producer.kind,
+                    producerType: producer.producerType || producer.kind
                   })
                 }
               }
@@ -274,10 +277,10 @@ export function useWebRTC() {
   }
 
   /**
-   * Produce media (send video/audio to server)
+   * Produce media (send video/audio/screen to server)
    */
-  const produce = async (track, kind) => {
-    console.log(`[WebRTC] Producing ${kind} track:`, track?.id || track)
+  const produce = async (track, kind, producerType = null) => {
+    console.log(`[WebRTC] Producing ${producerType || kind} track:`, track?.id || track)
     
     if (!track) {
       throw new Error(`No ${kind} track provided`)
@@ -288,6 +291,9 @@ export function useWebRTC() {
     }
 
     try {
+      // Determine the producer type (video, audio, or screen)
+      const type = producerType || kind
+      
       const producer = await sendTransport.value.produce({
         track,
         encodings: kind === 'video' ? [
@@ -298,10 +304,10 @@ export function useWebRTC() {
         codecOptions: kind === 'video' ? {
           videoGoogleStartBitrate: 1000,
         } : undefined,
-        appData: { kind },
+        appData: { kind, producerType: type },
       })
 
-      producers.value.set(producer.id, producer)
+      producers.value.set(producer.id, { producer, kind, type })
       isProducing.value = true
 
       producer.on('trackended', () => {
@@ -314,7 +320,7 @@ export function useWebRTC() {
         producers.value.delete(producer.id)
       })
 
-      console.log(`[WebRTC] ✅ Producer created for ${kind}:`, producer.id)
+      console.log(`[WebRTC] ✅ Producer created for ${type}:`, producer.id)
       return producer
     } catch (error) {
       console.error('[WebRTC] Failed to produce:', error)
@@ -325,7 +331,7 @@ export function useWebRTC() {
   /**
    * Consume media from another participant
    */
-  const consume = async (producerId, participantId) => {
+  const consume = async (producerId, participantId, producerType = 'video') => {
     if (!recvTransport.value) {
       await createRecvTransport()
     }
@@ -352,11 +358,23 @@ export function useWebRTC() {
 
           consumers.value.set(consumer.id, consumer)
 
-          // Add track to remote stream
-          let stream = remoteStreams.value.get(participantId)
-          if (!stream) {
-            stream = new MediaStream()
-            remoteStreams.value.set(participantId, stream)
+          // Determine if this is a screen share or regular stream
+          const isScreenShare = response.producerType === 'screen' || producerType === 'screen'
+          
+          // Add track to appropriate stream
+          let stream
+          if (isScreenShare) {
+            stream = screenStreams.value.get(participantId)
+            if (!stream) {
+              stream = new MediaStream()
+              screenStreams.value.set(participantId, stream)
+            }
+          } else {
+            stream = remoteStreams.value.get(participantId)
+            if (!stream) {
+              stream = new MediaStream()
+              remoteStreams.value.set(participantId, stream)
+            }
           }
           stream.addTrack(consumer.track)
 
@@ -372,8 +390,8 @@ export function useWebRTC() {
           // Resume consumer (required by mediasoup)
           socket.value.emit('resume-consumer', { consumerId: consumer.id })
 
-          console.log('[WebRTC] Consuming', response.kind, 'from:', participantId)
-          resolve({ consumer, stream })
+          console.log('[WebRTC] Consuming', isScreenShare ? 'screen share' : response.kind, 'from:', participantId)
+          resolve({ consumer, stream, isScreenShare })
         } catch (error) {
           console.error('[WebRTC] Failed to consume:', error)
           reject(error)
@@ -386,8 +404,9 @@ export function useWebRTC() {
    * Close a producer
    */
   const closeProducer = (producerId) => {
-    const producer = producers.value.get(producerId)
-    if (producer) {
+    const producerData = producers.value.get(producerId)
+    if (producerData) {
+      const producer = producerData.producer || producerData
       producer.close()
       producers.value.delete(producerId)
       
@@ -408,20 +427,26 @@ export function useWebRTC() {
    * Pause/Resume producer (mute/unmute)
    */
   const pauseProducer = (producerId) => {
-    const producer = producers.value.get(producerId)
-    if (producer && !producer.paused) {
-      producer.pause()
-      socket.value?.emit('pause-producer', { producerId })
-      console.log('[WebRTC] Paused producer:', producerId)
+    const producerData = producers.value.get(producerId)
+    if (producerData) {
+      const producer = producerData.producer || producerData
+      if (!producer.paused) {
+        producer.pause()
+        socket.value?.emit('pause-producer', { producerId })
+        console.log('[WebRTC] Paused producer:', producerId)
+      }
     }
   }
 
   const resumeProducer = (producerId) => {
-    const producer = producers.value.get(producerId)
-    if (producer && producer.paused) {
-      producer.resume()
-      socket.value?.emit('resume-producer', { producerId })
-      console.log('[WebRTC] Resumed producer:', producerId)
+    const producerData = producers.value.get(producerId)
+    if (producerData) {
+      const producer = producerData.producer || producerData
+      if (producer.paused) {
+        producer.resume()
+        socket.value?.emit('resume-producer', { producerId })
+        console.log('[WebRTC] Resumed producer:', producerId)
+      }
     }
   }
 
@@ -432,8 +457,8 @@ export function useWebRTC() {
     if (!socket.value) return
 
     // New producer available (fixed parameter name: peerId not participantId)
-    socket.value.on('new-producer', async ({ producerId, peerId, kind }) => {
-      console.log('[WebRTC] New producer available:', kind, 'producer:', producerId, 'from peer:', peerId)
+    socket.value.on('new-producer', async ({ producerId, peerId, kind, producerType }) => {
+      console.log('[WebRTC] New producer available:', producerType || kind, 'producer:', producerId, 'from peer:', peerId)
       
       // Add participant if not exists
       if (!participants.value.has(peerId)) {
@@ -441,8 +466,8 @@ export function useWebRTC() {
       }
       
       try {
-        await consume(producerId, peerId)
-        console.log('[WebRTC] ✅ Successfully consuming', kind, 'from peer:', peerId)
+        await consume(producerId, peerId, producerType || kind)
+        console.log('[WebRTC] ✅ Successfully consuming', producerType || kind, 'from peer:', peerId)
       } catch (error) {
         console.error('[WebRTC] Failed to consume new producer:', error)
       }
@@ -459,15 +484,56 @@ export function useWebRTC() {
     // Producer closed
     socket.value.on('producer-closed', ({ producerId, peerId }) => {
       console.log('[WebRTC] Producer closed:', producerId, 'from:', peerId)
-      // Remove track from remote stream
-      const stream = remoteStreams.value.get(peerId)
-      if (stream) {
-        // Clean up tracks
-        stream.getTracks().forEach(track => {
-          track.stop()
-          stream.removeTrack(track)
-        })
+      
+      // Check if it's a screen share producer
+      const screenStream = screenStreams.value.get(peerId)
+      if (screenStream) {
+        console.log('[WebRTC] Removing screen share stream for:', peerId)
+        screenStreams.value.delete(peerId)
+        screenStream.getTracks().forEach(track => track.stop())
+        return
       }
+      
+      // Otherwise, handle regular stream
+      // Note: We don't remove all tracks, just let the consumer handle it
+      // The stream will update when tracks are removed by the consumer
+      console.log('[WebRTC] Producer', producerId, 'closed, stream will update automatically')
+    })
+
+    // Listen for producer paused (camera/mic off)
+    socket.value.on('producer-paused', ({ producerId, peerId, kind }) => {
+      console.log('[WebRTC] Producer paused:', kind, producerId, 'from:', peerId)
+      
+      // Update producer state
+      producerStates.value.set(producerId, { 
+        paused: true, 
+        peerId,
+        kind,
+        timestamp: Date.now()
+      })
+      
+      // Force reactivity by creating new Map
+      producerStates.value = new Map(producerStates.value)
+      
+      console.log('[WebRTC] Updated producer states, paused:', kind, 'for peer:', peerId)
+    })
+
+    // Listen for producer resumed (camera/mic on)
+    socket.value.on('producer-resumed', ({ producerId, peerId, kind }) => {
+      console.log('[WebRTC] Producer resumed:', kind, producerId, 'from:', peerId)
+      
+      // Update producer state
+      producerStates.value.set(producerId, { 
+        paused: false, 
+        peerId,
+        kind,
+        timestamp: Date.now()
+      })
+      
+      // Force reactivity by creating new Map
+      producerStates.value = new Map(producerStates.value)
+      
+      console.log('[WebRTC] Updated producer states, resumed:', kind, 'for peer:', peerId)
     })
 
     // Peer left (fixed event name: peer-left not participant-left)
@@ -514,11 +580,11 @@ export function useWebRTC() {
     const pending = [...window._pendingConsumers]
     window._pendingConsumers = []
     
-    for (const { producerId, peerId, kind } of pending) {
+    for (const { producerId, peerId, kind, producerType } of pending) {
       try {
-        console.log('[WebRTC] Consuming existing', kind, 'from peer', peerId)
-        await consume(producerId, peerId)
-        console.log('[WebRTC] ✅ Successfully consumed', kind, 'from peer', peerId)
+        console.log('[WebRTC] Consuming existing', producerType || kind, 'from peer', peerId)
+        await consume(producerId, peerId, producerType || kind)
+        console.log('[WebRTC] ✅ Successfully consumed', producerType || kind, 'from peer', peerId)
       } catch (error) {
         console.error('[WebRTC] Failed to consume pending producer:', error)
       }
@@ -530,7 +596,8 @@ export function useWebRTC() {
    */
   const leaveRoom = () => {
     // Close all producers
-    producers.value.forEach((producer) => {
+    producers.value.forEach((producerData) => {
+      const producer = producerData.producer || producerData
       producer.close()
     })
     producers.value.clear()
@@ -556,6 +623,12 @@ export function useWebRTC() {
       stream.getTracks().forEach(track => track.stop())
     })
     remoteStreams.value.clear()
+    
+    // Clean up screen share streams
+    screenStreams.value.forEach((stream) => {
+      stream.getTracks().forEach(track => track.stop())
+    })
+    screenStreams.value.clear()
 
     // Disconnect socket
     if (socket.value) {
@@ -575,6 +648,7 @@ export function useWebRTC() {
   const producerIds = computed(() => Array.from(producers.value.keys()))
   const consumerIds = computed(() => Array.from(consumers.value.keys()))
   const remoteParticipants = computed(() => Array.from(remoteStreams.value.keys()))
+  const screenSharingParticipants = computed(() => Array.from(screenStreams.value.keys()))
 
   return {
     // State
@@ -585,10 +659,13 @@ export function useWebRTC() {
     producers,
     consumers,
     remoteStreams,
+    screenStreams,
     participants,
+    producerStates,
     producerIds,
     consumerIds,
     remoteParticipants,
+    screenSharingParticipants,
     
     // Methods
     initialize,
@@ -600,6 +677,8 @@ export function useWebRTC() {
     consume,
     consumePendingProducers,
     closeProducer,
+    pauseProducer,
+    resumeProducer,
     pauseProducer,
     resumeProducer,
   }

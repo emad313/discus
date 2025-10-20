@@ -1,23 +1,23 @@
 <template>
-  <div class="min-h-screen bg-[#202124] flex items-center justify-center p-4">
+  <div class="min-h-screen bg-[#202124] flex items-center justify-center p-2 sm:p-4">
     <div class="max-w-6xl w-full">
-      <div class="grid lg:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <!-- Left Panel: Video/Audio Preview -->
-        <div class="bg-[#292A2D] rounded-2xl p-6 space-y-6">
+        <div class="bg-[#292A2D] rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-4 sm:space-y-6">
           <!-- Header -->
           <div class="text-center">
-            <h1 class="text-2xl font-semibold text-white mb-2">Ready to join?</h1>
-            <p class="text-gray-400 text-sm">{{ meetingId }}</p>
+            <h1 class="text-xl sm:text-2xl font-semibold text-white mb-2">Ready to join?</h1>
+            <p class="text-gray-400 text-xs sm:text-sm break-all">{{ meetingId }}</p>
           </div>
 
           <!-- Video Preview -->
-          <div class="relative aspect-video bg-[#1A1B1E] rounded-xl overflow-hidden">
+          <div class="relative aspect-video bg-[#1A1B1E] rounded-lg sm:rounded-xl overflow-hidden">
             <video
               ref="previewVideoRef"
               autoplay
               playsinline
               muted
-              class="w-full h-full object-cover"
+              class="w-full h-full object-cover transform -scale-x-100"
               :class="{ 'hidden': !isVideoEnabled }"
             ></video>
             
@@ -26,33 +26,33 @@
               v-if="!isVideoEnabled"
               class="absolute inset-0 flex flex-col items-center justify-center"
             >
-              <div class="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center mb-4">
-                <span class="text-4xl font-bold text-white">{{ userInitials }}</span>
+              <div class="w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-blue-600 flex items-center justify-center mb-2 sm:mb-4">
+                <span class="text-2xl sm:text-4xl font-bold text-white">{{ userInitials }}</span>
               </div>
-              <p class="text-gray-400">Camera is off</p>
+              <p class="text-gray-400 text-sm sm:text-base">Camera is off</p>
             </div>
 
             <!-- Name Overlay -->
-            <div class="absolute bottom-4 left-4 bg-black/60 px-3 py-1 rounded-full">
-              <span class="text-white text-sm">{{ displayName || 'Guest' }}</span>
+            <div class="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 bg-black/60 px-2 sm:px-3 py-1 rounded-full">
+              <span class="text-white text-xs sm:text-sm truncate max-w-[150px] sm:max-w-none inline-block">{{ displayName || 'Guest' }}</span>
             </div>
 
             <!-- Controls Overlay -->
-            <div class="absolute bottom-4 right-4 flex space-x-2">
+            <div class="absolute bottom-2 sm:bottom-4 right-2 sm:right-4 flex space-x-1 sm:space-x-2">
               <button
                 @click="toggleVideo"
                 :class="[
-                  'p-3 rounded-full transition-all',
+                  'p-2 sm:p-3 rounded-full transition-all',
                   isVideoEnabled 
                     ? 'bg-[#3C4043] hover:bg-[#5F6368]' 
                     : 'bg-red-600 hover:bg-red-700'
                 ]"
                 :title="isVideoEnabled ? 'Turn off camera' : 'Turn on camera'"
               >
-                <svg v-if="isVideoEnabled" class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <svg v-if="isVideoEnabled" class="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
                 </svg>
-                <svg v-else class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <svg v-else class="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A2 2 0 0018 13V7a1 1 0 00-1.447-.894l-2 1A1 1 0 0014 8v.586l-4-4V4a2 2 0 00-2-2H6.414l-2.707-2.707zm3.586 3.586l7.414 7.414-1.121.561-2 1A1 1 0 0110 14V8.586l-2.707-2.707z" clip-rule="evenodd" />
                 </svg>
               </button>
@@ -60,17 +60,17 @@
               <button
                 @click="toggleAudio"
                 :class="[
-                  'p-3 rounded-full transition-all',
+                  'p-2 sm:p-3 rounded-full transition-all',
                   isAudioEnabled 
                     ? 'bg-[#3C4043] hover:bg-[#5F6368]' 
                     : 'bg-red-600 hover:bg-red-700'
                 ]"
                 :title="isAudioEnabled ? 'Mute' : 'Unmute'"
               >
-                <svg v-if="isAudioEnabled" class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <svg v-if="isAudioEnabled" class="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd" />
                 </svg>
-                <svg v-else class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <svg v-else class="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
                 </svg>
               </button>
@@ -78,24 +78,24 @@
           </div>
 
           <!-- Device Settings -->
-          <div class="space-y-4">
+          <div class="space-y-3 sm:space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">Your Name</label>
+              <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">Your Name</label>
               <input
                 v-model="displayName"
                 type="text"
                 placeholder="Enter your name"
-                class="w-full px-4 py-3 bg-[#3C4043] text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-[#3C4043] text-white text-sm sm:text-base rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 @keyup.enter="joinMeeting"
               />
             </div>
 
             <div v-if="cameras.length > 0">
-              <label class="block text-sm font-medium text-gray-300 mb-2">Camera</label>
+              <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">Camera</label>
               <select
                 v-model="selectedCameraId"
                 @change="changeCamera"
-                class="w-full px-4 py-3 bg-[#3C4043] text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-[#3C4043] text-white text-sm sm:text-base rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option v-for="camera in cameras" :key="camera.deviceId" :value="camera.deviceId">
                   {{ camera.label || `Camera ${cameras.indexOf(camera) + 1}` }}
@@ -104,11 +104,11 @@
             </div>
 
             <div v-if="microphones.length > 0">
-              <label class="block text-sm font-medium text-gray-300 mb-2">Microphone</label>
+              <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">Microphone</label>
               <select
                 v-model="selectedMicrophoneId"
                 @change="changeMicrophone"
-                class="w-full px-4 py-3 bg-[#3C4043] text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-[#3C4043] text-white text-sm sm:text-base rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option v-for="mic in microphones" :key="mic.deviceId" :value="mic.deviceId">
                   {{ mic.label || `Microphone ${microphones.indexOf(mic) + 1}` }}
@@ -117,10 +117,10 @@
             </div>
 
             <div v-if="speakers.length > 0">
-              <label class="block text-sm font-medium text-gray-300 mb-2">Speaker</label>
+              <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">Speaker</label>
               <select
                 v-model="selectedSpeakerId"
-                class="w-full px-4 py-3 bg-[#3C4043] text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-[#3C4043] text-white text-sm sm:text-base rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option v-for="speaker in speakers" :key="speaker.deviceId" :value="speaker.deviceId">
                   {{ speaker.label || `Speaker ${speakers.indexOf(speaker) + 1}` }}
@@ -133,7 +133,7 @@
           <button
             @click="joinMeeting"
             :disabled="isJoining"
-            class="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all shadow-lg hover:shadow-xl"
+            class="w-full py-3 sm:py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-semibold text-sm sm:text-base rounded-lg transition-all shadow-lg hover:shadow-xl"
           >
             <span v-if="isJoining">Joining...</span>
             <span v-else>Join Now</span>
@@ -141,50 +141,50 @@
         </div>
 
         <!-- Right Panel: Participants Already in Meeting -->
-        <div class="bg-[#292A2D] rounded-2xl p-6 space-y-6">
+        <div class="bg-[#292A2D] rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-4 sm:space-y-6">
           <!-- Header -->
           <div>
-            <h2 class="text-xl font-semibold text-white mb-2">In this meeting</h2>
-            <p class="text-gray-400 text-sm">
+            <h2 class="text-lg sm:text-xl font-semibold text-white mb-2">In this meeting</h2>
+            <p class="text-gray-400 text-xs sm:text-sm">
               {{ existingParticipants.length }} {{ existingParticipants.length === 1 ? 'person' : 'people' }} already here
             </p>
           </div>
 
           <!-- Participants List -->
-          <div class="space-y-3 max-h-[600px] overflow-y-auto custom-scrollbar">
+          <div class="space-y-2 sm:space-y-3 max-h-[300px] sm:max-h-[600px] overflow-y-auto custom-scrollbar">
             <!-- Empty State -->
-            <div v-if="existingParticipants.length === 0" class="text-center py-12">
-              <svg class="w-20 h-20 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div v-if="existingParticipants.length === 0" class="text-center py-8 sm:py-12">
+              <svg class="w-16 h-16 sm:w-20 sm:h-20 text-gray-600 mx-auto mb-3 sm:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              <p class="text-gray-400 text-lg">No one here yet</p>
-              <p class="text-gray-500 text-sm mt-2">Be the first to join!</p>
+              <p class="text-gray-400 text-base sm:text-lg">No one here yet</p>
+              <p class="text-gray-500 text-xs sm:text-sm mt-2">Be the first to join!</p>
             </div>
 
             <!-- Participant Cards -->
             <div
               v-for="participant in existingParticipants"
               :key="participant.id"
-              class="flex items-center space-x-3 p-4 bg-[#3C4043] rounded-lg hover:bg-[#5F6368] transition-colors"
+              class="flex items-center space-x-2 sm:space-x-3 p-3 sm:p-4 bg-[#3C4043] rounded-lg hover:bg-[#5F6368] transition-colors"
             >
               <!-- Avatar -->
-              <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                <span class="text-white font-semibold text-lg">
+              <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                <span class="text-white font-semibold text-base sm:text-lg">
                   {{ getInitials(participant.userName) }}
                 </span>
               </div>
 
               <!-- Info -->
               <div class="flex-1 min-w-0">
-                <p class="text-white font-medium truncate">
+                <p class="text-white font-medium text-sm sm:text-base truncate">
                   {{ participant.userName || 'Guest' }}
                 </p>
-                <div class="flex items-center space-x-2 mt-1">
+                <div class="flex items-center space-x-1.5 sm:space-x-2 mt-1">
                   <!-- Audio Status -->
-                  <div class="flex items-center space-x-1">
+                  <div class="flex items-center space-x-0.5 sm:space-x-1">
                     <svg
                       :class="[
-                        'w-3 h-3',
+                        'w-2.5 h-2.5 sm:w-3 sm:h-3',
                         participant.audioEnabled ? 'text-green-500' : 'text-red-500'
                       ]"
                       fill="currentColor"
@@ -193,16 +193,16 @@
                       <path v-if="participant.audioEnabled" fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd" />
                       <path v-else fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
                     </svg>
-                    <span class="text-xs text-gray-400">
+                    <span class="text-[10px] sm:text-xs text-gray-400">
                       {{ participant.audioEnabled ? 'Mic on' : 'Muted' }}
                     </span>
                   </div>
 
                   <!-- Video Status -->
-                  <div class="flex items-center space-x-1">
+                  <div class="flex items-center space-x-0.5 sm:space-x-1">
                     <svg
                       :class="[
-                        'w-3 h-3',
+                        'w-2.5 h-2.5 sm:w-3 sm:h-3',
                         participant.videoEnabled ? 'text-green-500' : 'text-gray-500'
                       ]"
                       fill="currentColor"
@@ -211,7 +211,7 @@
                       <path v-if="participant.videoEnabled" d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
                       <path v-else fill-rule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A2 2 0 0018 13V7a1 1 0 00-1.447-.894l-2 1A1 1 0 0014 8v.586l-4-4V4a2 2 0 00-2-2H6.414l-2.707-2.707zm3.586 3.586l7.414 7.414-1.121.561-2 1A1 1 0 0110 14V8.586l-2.707-2.707z" clip-rule="evenodd" />
                     </svg>
-                    <span class="text-xs text-gray-400">
+                    <span class="text-[10px] sm:text-xs text-gray-400">
                       {{ participant.videoEnabled ? 'Camera on' : 'Camera off' }}
                     </span>
                   </div>
@@ -219,19 +219,19 @@
               </div>
 
               <!-- Connection Status -->
-              <div class="w-2 h-2 rounded-full bg-green-500" title="Connected"></div>
+              <div class="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" title="Connected"></div>
             </div>
           </div>
 
           <!-- Info Box -->
-          <div class="mt-6 p-4 bg-blue-900/20 border border-blue-700/30 rounded-lg">
-            <div class="flex items-start space-x-3">
-              <svg class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+          <div class="mt-4 sm:mt-6 p-3 sm:p-4 bg-blue-900/20 border border-blue-700/30 rounded-lg">
+            <div class="flex items-start space-x-2 sm:space-x-3">
+              <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
               </svg>
               <div>
-                <p class="text-sm text-blue-300 font-medium">Tip</p>
-                <p class="text-xs text-blue-200 mt-1">
+                <p class="text-xs sm:text-sm text-blue-300 font-medium">Tip</p>
+                <p class="text-[10px] sm:text-xs text-blue-200 mt-1">
                   Test your camera and microphone before joining. You can always change your settings during the meeting.
                 </p>
               </div>
@@ -241,8 +241,8 @@
       </div>
 
       <!-- Error Message -->
-      <div v-if="errorMessage" class="mt-4 p-4 bg-red-900/50 border border-red-700 rounded-lg">
-        <p class="text-red-200 text-sm">{{ errorMessage }}</p>
+      <div v-if="errorMessage" class="mt-3 sm:mt-4 p-3 sm:p-4 bg-red-900/50 border border-red-700 rounded-lg">
+        <p class="text-red-200 text-xs sm:text-sm">{{ errorMessage }}</p>
       </div>
     </div>
   </div>
@@ -464,18 +464,25 @@ const joinMeeting = async () => {
   isJoining.value = true
   stopPreview()
 
-  // Navigate to meeting with settings
-  router.push({
-    name: 'meeting',
-    params: { id: meetingId.value },
-    query: {
+  // Save settings to localStorage (will persist across refreshes)
+  try {
+    localStorage.setItem('userPreferences', JSON.stringify({
       name: displayName.value.trim(),
-      video: isVideoEnabled.value ? 'true' : 'false',
-      audio: isAudioEnabled.value ? 'true' : 'false',
+      video: isVideoEnabled.value,
+      audio: isAudioEnabled.value,
       cameraId: selectedCameraId.value,
       microphoneId: selectedMicrophoneId.value,
-      speakerId: selectedSpeakerId.value
-    }
+      speakerId: selectedSpeakerId.value,
+      savedAt: Date.now()
+    }))
+  } catch (e) {
+    console.warn('[PreJoin] Failed to save preferences:', e)
+  }
+
+  // Navigate to meeting (settings now in localStorage, not query)
+  router.push({
+    name: 'meeting',
+    params: { id: meetingId.value }
   })
 }
 
