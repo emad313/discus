@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed right-0 top-0 h-full w-80 bg-[#202124] shadow-2xl z-50 flex flex-col">
+  <div class="fixed right-0 top-0 h-full w-full md:w-80 bg-[#202124] shadow-2xl z-50 flex flex-col">
     <!-- Header -->
     <div class="flex items-center justify-between p-4 border-b border-[#3C4043]">
       <h3 class="text-lg font-semibold text-white">Participants ({{ participantCount }})</h3>

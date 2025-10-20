@@ -605,6 +605,40 @@ export function setupSocketHandlers(io) {
       }
     });
 
+    // Reaction events
+    socket.on('chat:add-reaction', ({ meetingId, messageId, emoji, userId, userName }) => {
+      try {
+        logger.info(`[Chat] ${userName} added reaction ${emoji} to message ${messageId}`);
+        
+        // Broadcast reaction to all users in the meeting
+        io.to(meetingId).emit('chat:reaction-added', {
+          messageId,
+          emoji,
+          userId,
+          userName,
+          timestamp: Date.now()
+        });
+      } catch (error) {
+        logger.error('Error adding reaction:', error);
+      }
+    });
+
+    socket.on('chat:remove-reaction', ({ meetingId, messageId, emoji, userId }) => {
+      try {
+        logger.info(`[Chat] User ${userId} removed reaction ${emoji} from message ${messageId}`);
+        
+        // Broadcast reaction removal to all users in the meeting
+        io.to(meetingId).emit('chat:reaction-removed', {
+          messageId,
+          emoji,
+          userId,
+          timestamp: Date.now()
+        });
+      } catch (error) {
+        logger.error('Error removing reaction:', error);
+      }
+    });
+
     // ========== END CHAT EVENTS ==========
 
     // ========== HOST CONTROL EVENTS ==========

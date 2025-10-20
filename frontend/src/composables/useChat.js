@@ -97,7 +97,21 @@ export function useChat(socket, meetingId) {
     socketInstance.on('receive-message', handleReceiveMessage)
     socketInstance.on('user-typing', handleUserTyping)
     socketInstance.on('user-stopped-typing', handleUserStoppedTyping)
+    socketInstance.on('chat:reaction-added', handleReactionAdded)
+    socketInstance.on('chat:reaction-removed', handleReactionRemoved)
     console.log('[Chat] Chat listeners setup successfully')
+  }
+
+  // Handle reaction added
+  const handleReactionAdded = ({ messageId, emoji, userId, userName, timestamp }) => {
+    console.log('[Chat] Reaction added:', { messageId, emoji, userId })
+    chatStore.addReaction(messageId, emoji, userId, userName)
+  }
+
+  // Handle reaction removed
+  const handleReactionRemoved = ({ messageId, emoji, userId }) => {
+    console.log('[Chat] Reaction removed:', { messageId, emoji, userId })
+    chatStore.removeReaction(messageId, emoji, userId)
   }
 
   // Cleanup socket listeners
@@ -112,6 +126,8 @@ export function useChat(socket, meetingId) {
     socketInstance.off('receive-message', handleReceiveMessage)
     socketInstance.off('user-typing', handleUserTyping)
     socketInstance.off('user-stopped-typing', handleUserStoppedTyping)
+    socketInstance.off('chat:reaction-added', handleReactionAdded)
+    socketInstance.off('chat:reaction-removed', handleReactionRemoved)
     console.log('[Chat] Chat listeners cleaned up')
 
     if (typingTimeout.value) {
