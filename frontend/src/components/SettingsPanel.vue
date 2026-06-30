@@ -1,5 +1,5 @@
 <template>
-  <div class="absolute top-0 right-0 bottom-0 w-96 bg-white dark:bg-[#202124] shadow-2xl z-30 flex flex-col">
+  <div class="absolute top-0 right-0 bottom-0 w-full md:w-96 bg-white dark:bg-[#202124] shadow-2xl z-30 flex flex-col">
     <!-- Header -->
     <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
       <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">Settings</h2>

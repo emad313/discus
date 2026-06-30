@@ -3,6 +3,87 @@
     <!-- Toast Notifications -->
     <ToastContainer />
     
+    <!-- Fullscreen Video Modal -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div v-if="fullscreenParticipant" class="fixed inset-0 z-[100] bg-black flex flex-col" @click.self="closeFullscreen">
+        <!-- Fullscreen Header -->
+        <div class="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent p-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+              <span class="text-white text-lg font-bold">
+                {{ (enrichedParticipants.get(fullscreenParticipant)?.userName || 'Guest').charAt(0).toUpperCase() }}
+              </span>
+            </div>
+            <div>
+              <p class="text-white font-medium">
+                {{ enrichedParticipants.get(fullscreenParticipant)?.userName || `Guest ${fullscreenParticipant.slice(0, 6)}` }}
+              </p>
+              <p class="text-gray-400 text-sm">Fullscreen mode</p>
+            </div>
+          </div>
+          <button
+            @click="closeFullscreen"
+            class="bg-red-600 hover:bg-red-700 p-3 rounded-lg transition-colors"
+            title="Exit fullscreen"
+          >
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Fullscreen Video -->
+        <div class="flex-1 flex items-center justify-center p-4">
+          <div class="relative w-full h-full max-w-screen-2xl">
+            <video
+              :ref="el => setFullscreenVideoRef(el, fullscreenParticipant)"
+              autoplay
+              playsinline
+              class="w-full h-full object-contain"
+              :class="{ 'invisible': enrichedParticipants.get(fullscreenParticipant)?.videoEnabled === false }"
+            ></video>
+            
+            <!-- Camera Off Placeholder -->
+            <div v-show="enrichedParticipants.get(fullscreenParticipant)?.videoEnabled === false" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+              <div class="text-center">
+                <div class="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-6">
+                  <span class="text-white text-6xl font-bold">
+                    {{ (enrichedParticipants.get(fullscreenParticipant)?.userName || 'Guest').charAt(0).toUpperCase() }}
+                  </span>
+                </div>
+                <p class="text-white text-2xl font-medium mb-2">
+                  {{ enrichedParticipants.get(fullscreenParticipant)?.userName || `Guest ${fullscreenParticipant.slice(0, 6)}` }}
+                </p>
+                <p class="text-gray-400 text-lg">Camera is off</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fullscreen Controls (Bottom) -->
+        <div class="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-black/80 to-transparent p-6">
+          <div class="flex items-center justify-center gap-4">
+            <button
+              @click="closeFullscreen"
+              class="bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span class="text-white font-medium">Exit Fullscreen</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+    
     <!-- Waiting Room Overlay -->
     <WaitingRoom
       v-if="showWaitingRoom"
@@ -38,6 +119,18 @@
       <div class="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
         <!-- Layout Switcher -->
         <LayoutSwitcher @layout-change="handleLayoutChange" />
+        
+        <!-- Keyboard Shortcuts Button -->
+        <button
+          @click="showKeyboardShortcuts = true"
+          class="hidden md:flex px-2 sm:px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all text-white text-sm font-medium items-center gap-2"
+          title="Keyboard shortcuts (?)"
+        >
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+          </svg>
+          <span class="hidden lg:inline">?</span>
+        </button>
         
         <!-- Meeting Info Button -->
         <button
@@ -110,7 +203,7 @@
     </div>
 
     <!-- Main Content -->
-    <main v-else class="flex-1 flex items-center justify-center p-2 sm:p-4 md:p-6 pt-16 sm:pt-20 md:pt-24 pb-24 sm:pb-28 md:pb-32">
+    <main v-else class="flex-1 flex items-center justify-center p-2 sm:p-4 md:p-6 pt-16 sm:pt-20 md:pt-24 pb-20 sm:pb-24 md:pb-32">
       <!-- Grid Layout -->
       <div v-if="currentLayout === 'grid'" class="w-full h-full max-w-[1800px]">
         <div 
@@ -259,6 +352,17 @@
             
             <!-- Status Indicators (Top Right) -->
             <div class="absolute top-3 right-3 flex gap-2">
+              <!-- Fullscreen Button (on hover) -->
+              <button 
+                class="bg-gray-800/80 hover:bg-gray-700 p-2 rounded-lg shadow-lg backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Fullscreen"
+                @click="openFullscreen(participantId)"
+              >
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+              </button>
+              
               <!-- Pin Button (on hover) -->
               <button 
                 class="bg-gray-800/80 hover:bg-gray-700 p-2 rounded-lg shadow-lg backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
@@ -266,7 +370,7 @@
                 @click="setSpotlightParticipant(participantId)"
               >
                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012-2v16l-7-3.5L5 21V5z" />
                 </svg>
               </button>
             </div>
@@ -848,6 +952,9 @@
         :current-user-id="socket?.id || ''"
         :participant-count="totalParticipants"
         @send-message="handleSendMessage"
+        @send-file="handleSendFile"
+        @add-reaction="handleAddReaction"
+        @remove-reaction="handleRemoveReaction"
         @typing-start="handleChatTypingStart"
         @typing-stop="handleChatTypingStop"
         @close="chatStore.closeChat()"
@@ -892,6 +999,124 @@
         @update-name="updateUserName"
       />
     </transition>
+
+    <!-- Keyboard Shortcuts Help Modal -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div v-if="showKeyboardShortcuts" class="fixed inset-0 z-[200] bg-black/70 flex items-center justify-center p-4" @click="showKeyboardShortcuts = false">
+        <div class="bg-white dark:bg-[#202124] rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto" @click.stop>
+          <!-- Header -->
+          <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">⌨️ Keyboard Shortcuts</h2>
+            <button
+              @click="showKeyboardShortcuts = false"
+              class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+            >
+              <svg class="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Shortcuts List -->
+          <div class="p-6 space-y-6">
+            <!-- Media Controls -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Media Controls</h3>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Toggle microphone</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">Spacebar</kbd>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Toggle camera</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">Ctrl + E</kbd>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Toggle screen share</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">Ctrl + D</kbd>
+                </div>
+              </div>
+            </div>
+
+            <!-- Navigation -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Navigation</h3>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Toggle chat</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">Ctrl + K</kbd>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Toggle participants</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">Ctrl + P</kbd>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Close panels / Exit fullscreen</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">Escape</kbd>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Toggle fullscreen</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">F</kbd>
+                </div>
+              </div>
+            </div>
+
+            <!-- Host Controls -->
+            <div v-if="isHost">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Host Controls</h3>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Mute all participants</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">Ctrl + Shift + M</kbd>
+                </div>
+              </div>
+            </div>
+
+            <!-- Help -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Help</h3>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <span class="text-gray-700 dark:text-gray-300">Show this help</span>
+                  <kbd class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono">?</kbd>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <p class="text-sm text-gray-600 dark:text-gray-400 text-center">
+              💡 Tip: Shortcuts won't work when typing in chat or input fields
+            </p>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Mobile Controls (Bottom Nav Bar) -->
+    <MobileControls
+      v-if="!fullscreenParticipant"
+      :audio-enabled="isAudioEnabled"
+      :video-enabled="isVideoEnabled"
+      :chat-open="chatStore.isOpen"
+      :participants-open="showParticipants"
+      :participant-count="totalParticipants"
+      :unread-count="chatStore.unreadCount"
+      :is-fullscreen="fullscreenParticipant !== null"
+      @toggle-audio="toggleAudio"
+      @toggle-video="toggleVideo"
+      @toggle-chat="chatStore.toggleChat()"
+      @toggle-participants="showParticipants = !showParticipants"
+      @leave-call="handleLeaveMeeting"
+    />
 
     <!-- Host Controls Panel (Fixed Position) -->
     <div v-if="isHost" class="fixed bottom-20 sm:bottom-24 right-2 sm:right-6 z-30 max-w-[calc(100vw-1rem)] sm:max-w-md">
@@ -1023,6 +1248,7 @@ import SettingsPanel from '../components/SettingsPanel.vue'
 import ToastContainer from '../components/ToastContainer.vue'
 import HostControls from '../components/HostControls.vue'
 import WaitingRoom from '../components/WaitingRoom.vue'
+import MobileControls from '../components/MobileControls.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -1046,6 +1272,8 @@ const meetingDuration = ref('00:00')
 const isLocalActive = ref(false)
 const currentLayout = ref('grid')
 const spotlightParticipant = ref(null)
+const fullscreenParticipant = ref(null) // For fullscreen mode
+const fullscreenVideoRefs = ref(new Map()) // Track fullscreen video elements
 const screenShareParticipant = ref(null)
 const screenProducerId = ref(null) // Track screen share producer ID
 const videoProducerId = ref(null) // Track video producer ID
@@ -1061,6 +1289,19 @@ const hostId = ref(null)
 const isLocked = ref(false)
 const waitingParticipants = ref([])
 const showWaitingRoom = ref(false)
+
+// Keyboard shortcuts modal
+const showKeyboardShortcuts = ref(false)
+
+// Touch gesture state
+const touchState = ref({
+  startX: 0,
+  startY: 0,
+  currentX: 0,
+  currentY: 0,
+  isDragging: false,
+  direction: null // 'left', 'right', 'up', 'down'
+})
 
 // Route params
 const appName = import.meta.env.VITE_APP_NAME || 'Discus'
@@ -1364,6 +1605,43 @@ const setRemoteVideoRef = (el, participantId) => {
   }
 }
 
+// Fullscreen video functions
+const openFullscreen = (participantId) => {
+  console.log('[Meeting] Opening fullscreen for:', participantId)
+  fullscreenParticipant.value = participantId
+}
+
+const closeFullscreen = () => {
+  console.log('[Meeting] Closing fullscreen')
+  fullscreenParticipant.value = null
+}
+
+const setFullscreenVideoRef = (el, participantId) => {
+  if (el && participantId === fullscreenParticipant.value) {
+    console.log('[Meeting] Fullscreen video ref created for peer:', participantId)
+    fullscreenVideoRefs.value.set(participantId, el)
+    
+    // Attach stream if available
+    const stream = remoteStreams.value.get(participantId)
+    if (stream && el.srcObject !== stream) {
+      console.log('[Meeting] Attaching stream to fullscreen video for peer:', participantId)
+      el.srcObject = stream
+      
+      // Attempt to play
+      el.play()
+        .then(() => {
+          console.log('[Meeting] ✅ Fullscreen video playing for peer:', participantId)
+        })
+        .catch(e => {
+          console.error('[Meeting] ❌ Fullscreen play error:', e)
+          setTimeout(() => {
+            el.play().catch(e2 => console.error('[Meeting] ❌ Fullscreen retry error:', e2))
+          }, 100)
+        })
+    }
+  }
+}
+
 // Initialize meeting
 const initializeMeeting = async () => {
   try {
@@ -1562,6 +1840,76 @@ const handleSendMessage = async (message) => {
   } catch (error) {
     console.error('[Meeting] Failed to send message:', error)
     toastStore.error('Failed to send message. Please try again.')
+  }
+}
+
+const handleSendFile = async (file, message = '') => {
+  try {
+    console.log('[Meeting] Sending file:', file.name, file.size)
+    
+    // Create FormData for file upload
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('meetingId', meetingId.value)
+    formData.append('senderId', socket.id)
+    formData.append('senderName', userName.value)
+    if (message) formData.append('message', message)
+
+    // Upload file to backend
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    })
+
+    if (!response.ok) {
+      throw new Error('File upload failed')
+    }
+
+    const data = await response.json()
+    
+    // Send file message via socket
+    socket.emit('chat:message', {
+      meetingId: meetingId.value,
+      message: message || '',
+      file: {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        url: data.fileUrl
+      }
+    })
+
+    toastStore.success('File sent successfully')
+  } catch (error) {
+    console.error('[Meeting] Failed to send file:', error)
+    toastStore.error('Failed to send file. Please try again.')
+  }
+}
+
+const handleAddReaction = ({ messageId, emoji }) => {
+  try {
+    socket.emit('chat:add-reaction', {
+      meetingId: meetingId.value,
+      messageId,
+      emoji,
+      userId: socket.id,
+      userName: userName.value
+    })
+  } catch (error) {
+    console.error('[Meeting] Failed to add reaction:', error)
+  }
+}
+
+const handleRemoveReaction = ({ messageId, emoji }) => {
+  try {
+    socket.emit('chat:remove-reaction', {
+      meetingId: meetingId.value,
+      messageId,
+      emoji,
+      userId: socket.id
+    })
+  } catch (error) {
+    console.error('[Meeting] Failed to remove reaction:', error)
   }
 }
 
@@ -2208,6 +2556,68 @@ const cleanupHostControlListeners = () => {
   socket.value.off('host-changed')
 }
 
+// Touch Gesture Handlers for Mobile
+const handleTouchStart = (e) => {
+  const touch = e.touches[0]
+  touchState.value.startX = touch.clientX
+  touchState.value.startY = touch.clientY
+  touchState.value.isDragging = true
+  touchState.value.direction = null
+}
+
+const handleTouchMove = (e) => {
+  if (!touchState.value.isDragging) return
+  
+  const touch = e.touches[0]
+  touchState.value.currentX = touch.clientX
+  touchState.value.currentY = touch.clientY
+  
+  const deltaX = touch.clientX - touchState.value.startX
+  const deltaY = touch.clientY - touchState.value.startY
+  
+  // Determine direction based on larger delta
+  if (Math.abs(deltaX) > Math.abs(deltaY)) {
+    touchState.value.direction = deltaX > 0 ? 'right' : 'left'
+  } else {
+    touchState.value.direction = deltaY > 0 ? 'down' : 'up'
+  }
+}
+
+const handleTouchEnd = (e) => {
+  if (!touchState.value.isDragging) return
+  
+  const deltaX = touchState.value.currentX - touchState.value.startX
+  const deltaY = touchState.value.currentY - touchState.value.startY
+  const threshold = 100 // Minimum swipe distance
+  
+  // Swipe right to open chat (only if chat is closed)
+  if (touchState.value.direction === 'right' && deltaX > threshold && !chatStore.isOpen) {
+    chatStore.toggleChat()
+  }
+  
+  // Swipe left to open participants (only if participants is closed)
+  if (touchState.value.direction === 'left' && Math.abs(deltaX) > threshold && !showParticipants.value) {
+    showParticipants.value = true
+  }
+  
+  // Swipe down to close panels
+  if (touchState.value.direction === 'down' && deltaY > threshold) {
+    if (chatStore.isOpen) {
+      chatStore.toggleChat()
+    }
+    if (showParticipants.value) {
+      showParticipants.value = false
+    }
+    if (showSettings.value) {
+      showSettings.value = false
+    }
+  }
+  
+  // Reset state
+  touchState.value.isDragging = false
+  touchState.value.direction = null
+}
+
 // Lifecycle hooks
 onMounted(() => {
   initializeMeeting()
@@ -2216,6 +2626,11 @@ onMounted(() => {
   
   // Start active speaker detection
   startDetection()
+  
+  // Add touch gesture listeners for mobile
+  document.addEventListener('touchstart', handleTouchStart, { passive: true })
+  document.addEventListener('touchmove', handleTouchMove, { passive: true })
+  document.addEventListener('touchend', handleTouchEnd, { passive: true })
   console.log('[Meeting] Active speaker detection started')
   
   // Setup host control listeners
@@ -2224,10 +2639,102 @@ onMounted(() => {
     setupHostControlListeners()
     console.log('[Meeting] Host control listeners setup')
   }, 500)
+
+  // Keyboard shortcuts handler
+  const handleKeydown = (e) => {
+    // Don't trigger shortcuts when typing in input fields
+    const isInputField = ['INPUT', 'TEXTAREA'].includes(e.target.tagName)
+    
+    // Escape key - Close panels or exit fullscreen
+    if (e.key === 'Escape') {
+      if (fullscreenParticipant.value) {
+        closeFullscreen()
+      } else if (chatStore.isOpen) {
+        chatStore.toggleChat()
+      } else if (showParticipants.value) {
+        showParticipants.value = false
+      } else if (showSettings.value) {
+        showSettings.value = false
+      }
+      return
+    }
+    
+    // Spacebar - Toggle microphone (only when not in input field)
+    if (e.key === ' ' && !isInputField) {
+      e.preventDefault()
+      toggleAudio()
+      toastStore.info(hasAudio.value ? 'Microphone unmuted' : 'Microphone muted', 1500)
+      return
+    }
+    
+    // Ctrl/Cmd + E - Toggle camera
+    if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+      e.preventDefault()
+      toggleVideo()
+      toastStore.info(hasVideo.value ? 'Camera turned on' : 'Camera turned off', 1500)
+      return
+    }
+    
+    // Ctrl/Cmd + D - Toggle screen share
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+      e.preventDefault()
+      handleScreenShare()
+      return
+    }
+    
+    // Ctrl/Cmd + K - Toggle chat
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault()
+      chatStore.toggleChat()
+      return
+    }
+    
+    // Ctrl/Cmd + P - Toggle participants
+    if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+      e.preventDefault()
+      showParticipants.value = !showParticipants.value
+      return
+    }
+    
+    // Ctrl/Cmd + Shift + M - Mute all (host only)
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'M' && isHost.value) {
+      e.preventDefault()
+      // Emit mute-all event
+      if (socket.value) {
+        socket.value.emit('host:mute-all', { meetingId: meetingId.value })
+        toastStore.success('All participants muted')
+      }
+      return
+    }
+    
+    // F key - Toggle fullscreen (for main window)
+    if (e.key === 'f' && !isInputField) {
+      e.preventDefault()
+      if (document.fullscreenElement) {
+        document.exitFullscreen()
+      } else {
+        document.documentElement.requestFullscreen()
+      }
+      return
+    }
+    
+    // ? key - Show keyboard shortcuts help
+    if (e.key === '?' && !isInputField) {
+      e.preventDefault()
+      showKeyboardShortcuts.value = true
+      return
+    }
+  }
+  window.addEventListener('keydown', handleKeydown)
   
   // Cleanup on unmount
   onBeforeUnmount(() => {
     clearInterval(timeInterval)
+    window.removeEventListener('keydown', handleKeydown)
+    // Remove touch listeners
+    document.removeEventListener('touchstart', handleTouchStart)
+    document.removeEventListener('touchmove', handleTouchMove)
+    document.removeEventListener('touchend', handleTouchEnd)
   })
 })
 

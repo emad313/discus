@@ -8,6 +8,10 @@ export const useChatStore = defineStore('chat', () => {
   const chatOpen = ref(false)
 
   const addMessage = (message) => {
+    // Initialize reactions array if not present
+    if (!message.reactions) {
+      message.reactions = []
+    }
     messages.value.push(message)
     
     // Increment unread count if chat is closed
@@ -19,6 +23,31 @@ export const useChatStore = defineStore('chat', () => {
   const clearMessages = () => {
     messages.value = []
     unreadCount.value = 0
+  }
+
+  const addReaction = (messageId, emoji, userId, userName) => {
+    const message = messages.value.find(m => m.id === messageId)
+    if (message) {
+      if (!message.reactions) {
+        message.reactions = []
+      }
+      // Check if user already reacted with this emoji
+      const existingReaction = message.reactions.find(
+        r => r.emoji === emoji && r.userId === userId
+      )
+      if (!existingReaction) {
+        message.reactions.push({ emoji, userId, userName, timestamp: Date.now() })
+      }
+    }
+  }
+
+  const removeReaction = (messageId, emoji, userId) => {
+    const message = messages.value.find(m => m.id === messageId)
+    if (message && message.reactions) {
+      message.reactions = message.reactions.filter(
+        r => !(r.emoji === emoji && r.userId === userId)
+      )
+    }
   }
 
   const setTyping = (userId, userName) => {
@@ -62,6 +91,8 @@ export const useChatStore = defineStore('chat', () => {
     chatOpen,
     addMessage,
     clearMessages,
+    addReaction,
+    removeReaction,
     setTyping,
     removeTyping,
     openChat,
